@@ -100,7 +100,6 @@ def exec_client(cfg_cliente):
           cnx_secret    = get_par(data_con,'SECRET','')
 
      if  cnx_db not in drivers:
-         logger.error('Driver nao configurado: '+cnx_db)
          return
 
      with engine.connect() as con0:
@@ -134,7 +133,7 @@ def exec_client(cfg_cliente):
         if  cnx_db == "ORACLE":
             dsn_origem = cx_Oracle.makedsn(cnx_host, cnx_port, cnx_service)
             con = cx_Oracle.connect(user=cnx_user,password=cnx_pass, dsn=dsn_origem)
-        if  cnx_db in ('API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI'):
+        if  cnx_db in ('API_CGI','API_OMIE','HCM_SENIOR','API_LINHA'):
             get_type = cnx_db.lower()
 
         if  get_type == "db_con": 
@@ -196,84 +195,45 @@ def exec_client(cfg_cliente):
                 headers = json.loads(cnx_headers)
                 cnx_url = cnx_url+comando[1]
                 ws_pagina = 1
-                ws_total  = 100
+                ws_total = 2
 
-                if  comando[0] != 'get_content':
-                    with engine.connect() as con0:
-                         r_del = con0.execute(exec_clear)
-
-                while (ws_pagina<=ws_total):
-                     time.sleep(3)
-                     data   = requests.get(url=cnx_url+'?page='+str(ws_pagina), headers=headers).json()
-
-                     if  len(comando) > 2:
-                         data_check = data[comando[2]]
-                     else:
-                         data_check = data
-
-                     if  ('current_page' in data and 'last_page' in data):
-                         ws_total  = data['last_page']
-                         ws_pagina = data['current_page']+1
-                     else:
-                         ws_pagina +=1
-                         ws_total = ws_pagina + 1
-
-                     if  data_check != []:
-                         if  comando[0] == 'get_content':
-                             par_get_content = []
-                             par_get_content.append(str(data)[0:3950])
-                             par_get_content.append(id_uniq)
-                             with engine.connect() as con0:
-                                  r_back = con0.execute("update ETL_FILA set erros = :1 where id_uniq=:2", par_get_content)
-                             ws_pagina = 0
-                             ws_total  = 0
-                         else:
-                             if  len(comando) > 2:
-                                 data=data[comando[2]]
-
-                             if  comando[0] == 'occur_line':
-                                 try:
-                                    p_meta = exec_comando.split('|')[1].split(',')
-                                 except:
-                                    p_meta = []
-                                 try:
-                                    p_record_path = exec_comando.split('|')[2].split(',')
-                                 except:
-                                     p_record_path = []
-                                 if  p_meta != [] and p_record_path != []:
-                                     dados = pd.json_normalize(data, record_path=p_record_path, meta=p_meta)
-                                 else:
-                                     dados = pd.json_normalize(data,  meta=p_meta)
-                                 dados = dados.rename(columns=lambda x: x.replace('.','_'))
-                             else:
-                                 dados = pd.json_normalize(data)
-
-                             dados.columns = dados.columns.str.strip().str.lower()
-                             object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-                             dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-                             colunas = dados.columns
-                             dados = dados.rename(columns=lambda x: x.split('.')[-1])
-                             for index in range(len(tab_colunas)):
-                                 if  tab_colunas[index] not in dados.columns:
-                                     dados[tab_colunas[index]]=''
-                             dados = dados[tab_colunas]
-                             with engine.connect() as con0:
-                                  dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
-
-                         print('OK Pagina: '+str(ws_pagina))
-                     else:
-                         print('final GET')
-                         ws_total = ws_pagina-1
                 with engine.connect() as con0:
-                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+                     r_del = con0.execute(exec_clear)
+                while (ws_pagina<ws_total):
+                     data   = requests.post(url=cnx_url+'?page='+ws_pagina, headers=headers).json()
+                     ws_pagina +=1
+
+#                     if  comando[0] == 'occur_line':
+#                         subnivel = comando[5].split('/')
+#                         dados1=pd.json_normalize(data[comando[3]], record_path = [comando[4]], meta=subnivel, errors='ignore')
+#                         dados2=[]
+#                         dados2.append(dados1)
+#                         for it_sub in subnivel:
+#                             dados2.append(pd.json_normalize(dados1[it_sub], erros='ignore'))
+#                         dados = pd.concat(dados2,axis=1)
+#                     else:
+#                      dados = pd.json_normalize(data[comando[3]])
+
+                     dados.columns = dados.columns.str.strip().str.lower()
+                     object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+                     dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+                     colunas = dados.columns
+                     dados = dados.rename(columns=lambda x: x.split('.')[-1])
+                     for index in range(len(tab_colunas)):
+                         if  tab_colunas[index] not in dados.columns:
+                             dados[tab_colunas[index]]=''
+                     dados = dados[tab_colunas]
+                     print(dados)
+                     with engine.connect() as con0:
+                          dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                          r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
             except Exception as e:
-                det_err  = traceback.format_exc()
                 erros='Erro API_LINHA: '+str(e)[0:3500]
                 logger.error(erros)
-                logger.error(det_err)
                 with engine.connect() as con0:
                      r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
+
 
         if  get_type == "api_omie":
             try:
@@ -355,23 +315,16 @@ def exec_client(cfg_cliente):
 
                 while (ws_pagina<=ws_total):
                      params = exec_comando.split('|')
-                     url = cnx_url+params[2]+'?size='+str(ws_size)+'&offset='+str(ws_pagina-1)+'&'+params[3]
+                     url = cnx_url+params[0]+'?size='+str(ws_size)+'&offset='+str(ws_pagina-1)+'&'+params[1]
                      data = requests.get(url, headers=headers).json()
                      with open("/opt/oracle/upapi/error.txt", "w") as text_file:
                           text_file.write(str(data))
                      if  ws_pagina == 1:
                          ws_total = data['totalPages']
 
-                     #dados = pd.json_normalize(data['contents'])
-                     if params[0] == "full_line":
-                        dados = pd.json_normalize(data['contents'])
-                     else:    
-                        dados = pd.json_normalize(data['contents'])
-                        dados = pd.DataFrame(data['contents']).explode(params[1]).reset_index(drop=True)
-                        dados = pd.concat([dados,pd.json_normalize(dados[params[1]].dropna(),errors='ignore').add_prefix("it_")],axis=1)
-
+                     dados = pd.json_normalize(data['contents'])
                      ws_pagina += 1
-                     dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
+                     dados.columns = dados.columns.str.strip().str.lower()
                      object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
                      dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
                      colunas = dados.columns
@@ -394,98 +347,6 @@ def exec_client(cfg_cliente):
                           dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                           r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
-            except Exception as e:
-                erros='Erro HCM_SENIOR: '+str(e)[0:3500]
-                logger.error(erros)
-                with engine.connect() as con0:
-                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
-
-        if  get_type == "api_nexti":
-            try:
-                
-                logger.info('a001')
-
-                url = cnx_service
-                headers = CaseInsensitiveDict()
-                headers["grant_type"] = "client_credential"
-                headers["client_id"] = cnx_api_key
-                headers["client_secret"] = cnx_secret
-                
-                # headers["Content-Type"] = "application/json"
-                # par_data  = '{ "username": "'+cnx_user+'", "password": "'+cnx_pass+'" }'
-                
-                # par_data  = '{ "grant_type": "client_credentials", "client_id": "'+cnx_api_key+'", "client_secret": "'+cnx_secret+'" }'
-                
-                # resp = requests.post(url, headers=headers, data=par_data)
-                # resp = requests.post(url, headers=headers, data=par_data)
-
-                #url = "https://api.nexti.com/security/oauth/token"
-                #resp = requests.get(url, data=par_data)
-
-
-                #url = "https://api.nexti.com/security/oauth/token"
-                #resp = requests.get(url, headers=headers)
-
-                url = "https://api.nexti.com/security/oauth/token?grant_type=client_credentials&client_id=gruposetup&client_secret=611e03d43da3c23a1431027405c993e22b9643c4"
-                resp = requests.get(url)
-
-                logger.info('a1')
-                logger.info(resp)
-
-                # w_token = json.loads(resp.text)['jsonToken']
-                # w_token = json.loads(w_token)
-                # token = w_token['access_token']
-
-                #headers = CaseInsensitiveDict()
-                #headers["client_id"] = cnx_api_key
-                #headers["Authorization"] = "Bearer "+token
-                #headers["accept"] = "application/json"
-#
-                #ws_size = 1000
-                #ws_pagina = 1
-                #ws_total = 2
-#
-                #while (ws_pagina<=ws_total):
-                #     params = exec_comando.split('|')
-                #     url = cnx_url+params[2]+'?size='+str(ws_size)+'&offset='+str(ws_pagina-1)+'&'+params[3]
-                #     data = requests.get(url, headers=headers).json()
-                #     with open("/opt/oracle/upapi/error.txt", "w") as text_file:
-                #          text_file.write(str(data))
-                #     if  ws_pagina == 1:
-                #         ws_total = data['totalPages']
-#
-                #     #dados = pd.json_normalize(data['contents'])
-                #     if params[0] == "full_line":
-                #        dados = pd.json_normalize(data['contents'])
-                #     else:    
-                #        dados = pd.json_normalize(data['contents'])
-                #        dados = pd.DataFrame(data['contents']).explode(params[1]).reset_index(drop=True)
-                #        dados = pd.concat([dados,pd.json_normalize(dados[params[1]].dropna(),errors='ignore').add_prefix("it_")],axis=1)
-#
-                #     ws_pagina += 1
-                #     dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
-                #     object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-                #     dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-                #     colunas = dados.columns
-                #     dados = dados.rename(columns=lambda x: x.split('.')[-1])
-                #     for index in range(len(tab_colunas)):
-                #         if  tab_colunas[index] not in dados.columns:
-                #             dados[tab_colunas[index]]=''
-                #     dados = dados[tab_colunas]
-#
-                #     con = cx_Oracle.connect(user=fonte_user,password= fonte_pass, dsn=dsn,encoding="UTF-8")
-                #     cur = con.cursor()
-                #     id_clear=[]
-                #     for lista in dados['id']:
-                #         id_clear.append([lista])
-                #     logger.info('Delete: '+str(len(id_clear)))
-                #     cur.executemany(exec_clear, id_clear)
-                #     con.commit()
-                #     con.close()
-                #     with engine.connect() as con0:
-                #          dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
-                #          r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
-#
             except Exception as e:
                 erros='Erro HCM_SENIOR: '+str(e)[0:3500]
                 logger.error(erros)
@@ -520,7 +381,7 @@ logger = logging.getLogger()
 chk = datetime.today()
 h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
 
-drivers = ['FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI']
+drivers = ['FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR']
 
 logger.info('Serviço Iniciado [UPQUERY_ETL]')
 

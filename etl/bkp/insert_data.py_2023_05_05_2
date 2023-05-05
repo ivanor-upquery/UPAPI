@@ -196,84 +196,45 @@ def exec_client(cfg_cliente):
                 headers = json.loads(cnx_headers)
                 cnx_url = cnx_url+comando[1]
                 ws_pagina = 1
-                ws_total  = 100
+                ws_total = 2
 
-                if  comando[0] != 'get_content':
-                    with engine.connect() as con0:
-                         r_del = con0.execute(exec_clear)
-
-                while (ws_pagina<=ws_total):
-                     time.sleep(3)
-                     data   = requests.get(url=cnx_url+'?page='+str(ws_pagina), headers=headers).json()
-
-                     if  len(comando) > 2:
-                         data_check = data[comando[2]]
-                     else:
-                         data_check = data
-
-                     if  ('current_page' in data and 'last_page' in data):
-                         ws_total  = data['last_page']
-                         ws_pagina = data['current_page']+1
-                     else:
-                         ws_pagina +=1
-                         ws_total = ws_pagina + 1
-
-                     if  data_check != []:
-                         if  comando[0] == 'get_content':
-                             par_get_content = []
-                             par_get_content.append(str(data)[0:3950])
-                             par_get_content.append(id_uniq)
-                             with engine.connect() as con0:
-                                  r_back = con0.execute("update ETL_FILA set erros = :1 where id_uniq=:2", par_get_content)
-                             ws_pagina = 0
-                             ws_total  = 0
-                         else:
-                             if  len(comando) > 2:
-                                 data=data[comando[2]]
-
-                             if  comando[0] == 'occur_line':
-                                 try:
-                                    p_meta = exec_comando.split('|')[1].split(',')
-                                 except:
-                                    p_meta = []
-                                 try:
-                                    p_record_path = exec_comando.split('|')[2].split(',')
-                                 except:
-                                     p_record_path = []
-                                 if  p_meta != [] and p_record_path != []:
-                                     dados = pd.json_normalize(data, record_path=p_record_path, meta=p_meta)
-                                 else:
-                                     dados = pd.json_normalize(data,  meta=p_meta)
-                                 dados = dados.rename(columns=lambda x: x.replace('.','_'))
-                             else:
-                                 dados = pd.json_normalize(data)
-
-                             dados.columns = dados.columns.str.strip().str.lower()
-                             object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-                             dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-                             colunas = dados.columns
-                             dados = dados.rename(columns=lambda x: x.split('.')[-1])
-                             for index in range(len(tab_colunas)):
-                                 if  tab_colunas[index] not in dados.columns:
-                                     dados[tab_colunas[index]]=''
-                             dados = dados[tab_colunas]
-                             with engine.connect() as con0:
-                                  dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
-
-                         print('OK Pagina: '+str(ws_pagina))
-                     else:
-                         print('final GET')
-                         ws_total = ws_pagina-1
                 with engine.connect() as con0:
-                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+                     r_del = con0.execute(exec_clear)
+                while (ws_pagina<ws_total):
+                     data   = requests.post(url=cnx_url+'?page='+ws_pagina, headers=headers).json()
+                     ws_pagina +=1
+
+#                     if  comando[0] == 'occur_line':
+#                         subnivel = comando[5].split('/')
+#                         dados1=pd.json_normalize(data[comando[3]], record_path = [comando[4]], meta=subnivel, errors='ignore')
+#                         dados2=[]
+#                         dados2.append(dados1)
+#                         for it_sub in subnivel:
+#                             dados2.append(pd.json_normalize(dados1[it_sub], erros='ignore'))
+#                         dados = pd.concat(dados2,axis=1)
+#                     else:
+#                      dados = pd.json_normalize(data[comando[3]])
+
+                     dados.columns = dados.columns.str.strip().str.lower()
+                     object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+                     dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+                     colunas = dados.columns
+                     dados = dados.rename(columns=lambda x: x.split('.')[-1])
+                     for index in range(len(tab_colunas)):
+                         if  tab_colunas[index] not in dados.columns:
+                             dados[tab_colunas[index]]=''
+                     dados = dados[tab_colunas]
+                     print(dados)
+                     with engine.connect() as con0:
+                          dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                          r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
             except Exception as e:
-                det_err  = traceback.format_exc()
                 erros='Erro API_LINHA: '+str(e)[0:3500]
                 logger.error(erros)
-                logger.error(det_err)
                 with engine.connect() as con0:
                      r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
+
 
         if  get_type == "api_omie":
             try:
@@ -414,8 +375,9 @@ def exec_client(cfg_cliente):
                 # headers["Content-Type"] = "application/json"
                 # par_data  = '{ "username": "'+cnx_user+'", "password": "'+cnx_pass+'" }'
                 
-                # par_data  = '{ "grant_type": "client_credentials", "client_id": "'+cnx_api_key+'", "client_secret": "'+cnx_secret+'" }'
+                par_data  = '{ "grant_type": "client_credentials", "client_id": "'+cnx_api_key+'", "client_secret": "'+cnx_secret+'" }'
                 
+                logger.info(par_data)
                 # resp = requests.post(url, headers=headers, data=par_data)
                 # resp = requests.post(url, headers=headers, data=par_data)
 
@@ -423,11 +385,11 @@ def exec_client(cfg_cliente):
                 #resp = requests.get(url, data=par_data)
 
 
-                #url = "https://api.nexti.com/security/oauth/token"
-                #resp = requests.get(url, headers=headers)
+                url = "https://api.nexti.com/security/oauth/token"
+                resp = requests.get(url, headers=headers)
 
-                url = "https://api.nexti.com/security/oauth/token?grant_type=client_credentials&client_id=gruposetup&client_secret=611e03d43da3c23a1431027405c993e22b9643c4"
-                resp = requests.get(url)
+                #url = "https://api.nexti.com/security/oauth/token?grant_type=client_credentials&client_id=gruposetup&client_secret=611e03d43da3c23a1431027405c993e22b9643c4"
+                #resp = requests.get(url)
 
                 logger.info('a1')
                 logger.info(resp)
