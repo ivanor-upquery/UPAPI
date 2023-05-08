@@ -106,16 +106,11 @@ def up_sender(p_subject, p_body, p_sender_email, p_receiver_email, p_smtp_server
      try:
          server = smtplib.SMTP(p_smtp_server,p_port)
          server.ehlo()
-         try:
-            server.starttls(context=context) # Secure the connection
-         except Exception as e:
-            server.starttls() # Secure the connection
-            print('Segunda tentativa STARTTLS')   
-
-         print('Continua')   
+         server.starttls(context=context) # Secure the connection
          server.ehlo()
          server.login(p_sender_email, p_password)
      except Exception as e:
+         logger.error(e)
          print(e)
 
      logger.info('Enviando...')
