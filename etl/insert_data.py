@@ -98,6 +98,8 @@ def exec_client(cfg_cliente):
           cnx_service   = get_par(data_con,'SERVICE','')
           cnx_api_key   = get_par(data_con,'API_KEY','')
           cnx_secret    = get_par(data_con,'SECRET','')
+          cnx_type_file = get_par(data_con,'TYPE_FILE','')
+          cnx_loc_file  = get_par(data_con,'LOC_FILE','')
 
      if  cnx_db not in drivers:
          logger.error('Driver nao configurado: '+cnx_db)
@@ -134,7 +136,7 @@ def exec_client(cfg_cliente):
         if  cnx_db == "ORACLE":
             dsn_origem = cx_Oracle.makedsn(cnx_host, cnx_port, cnx_service)
             con = cx_Oracle.connect(user=cnx_user,password=cnx_pass, dsn=dsn_origem)
-        if  cnx_db in ('API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI'):
+        if  cnx_db in ('API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL'):
             get_type = cnx_db.lower()
 
         if  get_type == "db_con": 
@@ -150,6 +152,31 @@ def exec_client(cfg_cliente):
                  r_del = con0.execute(exec_clear)
                  dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                  r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+
+        if  get_type == "excel": 
+
+            try:
+                engine.fast_executemany = True
+                if  cnx_type_file == 'SERVER_FTP':
+                    dados = pd.read_excel(cnx_loc_file+exec_comando, engine='openpyxl')
+
+                object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+                dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
+
+                with engine.connect() as con0:
+                     r_del = con0.execute(exec_clear)
+
+                with engine.connect() as con0:
+                     dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                
+                with engine.connect() as con0:
+                    r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+
+            except Exception as e:
+                erros='Erro EXCEL: '+str(e)[0:3500]
+                logger.error(erros)
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
         if  get_type == "api_cgi": 
             try:
@@ -268,10 +295,10 @@ def exec_client(cfg_cliente):
                      r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
             except Exception as e:
-                det_err  = traceback.format_exc()
+                #det_err  = traceback.format_exc()
                 erros='Erro API_LINHA: '+str(e)[0:3500]
                 logger.error(erros)
-                logger.error(det_err)
+                #logger.error(det_err)
                 with engine.connect() as con0:
                      r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
@@ -520,7 +547,7 @@ logger = logging.getLogger()
 chk = datetime.today()
 h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
 
-drivers = ['FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI']
+drivers = ['FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL']
 
 logger.info('Serviço Iniciado [UPQUERY_ETL]')
 
