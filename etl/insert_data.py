@@ -10,6 +10,8 @@ import pandas as pd
 import sqlalchemy as sa
 import cx_Oracle
 import time
+import base64
+import math
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -384,12 +386,11 @@ def exec_client(cfg_cliente):
                      params = exec_comando.split('|')
                      url = cnx_url+params[2]+'?size='+str(ws_size)+'&offset='+str(ws_pagina-1)+'&'+params[3]
                      data = requests.get(url, headers=headers).json()
-                     with open("/opt/oracle/upapi/error.txt", "w") as text_file:
-                          text_file.write(str(data))
+                     #with open("/opt/oracle/upapi/error.txt", "w") as text_file:
+                     #     text_file.write(str(data))
                      if  ws_pagina == 1:
                          ws_total = data['totalPages']
 
-                     #dados = pd.json_normalize(data['contents'])
                      if params[0] == "full_line":
                         dados = pd.json_normalize(data['contents'])
                      else:    
@@ -429,96 +430,68 @@ def exec_client(cfg_cliente):
 
         if  get_type == "api_nexti":
             try:
-                
-                logger.info('a001')
-
+                # obtem o token que deve ser utilizado na api de get dos dados 
                 url = cnx_service
                 headers = CaseInsensitiveDict()
-                headers["grant_type"] = "client_credential"
-                headers["client_id"] = cnx_api_key
-                headers["client_secret"] = cnx_secret
+                token = (cnx_api_key+":"+cnx_secret).encode('ascii')
+                token = str(base64.b64encode(token)).replace("b'","").replace("'","") 
+                headers["Authorization"] = "Basic " + token # "Z3J1cG9zZXR1cDo2MTFlMDNkNDNkYTNjMjNhMTQzMTAyNzQwNWM5OTNlMjJiOTY0M2M0"
+                url = url+"?grant_type=client_credentials&client_id="+cnx_api_key+"&client_secret="+cnx_secret
+
+                resp = requests.post(url, headers=headers)
+                if resp.status_code != 200:
+                    raise Exception('Erro obtendo Token de acesso aos dados')
+                else:
+                    token = json.loads(resp.text)['access_token']
                 
-                # headers["Content-Type"] = "application/json"
-                # par_data  = '{ "username": "'+cnx_user+'", "password": "'+cnx_pass+'" }'
-                
-                # par_data  = '{ "grant_type": "client_credentials", "client_id": "'+cnx_api_key+'", "client_secret": "'+cnx_secret+'" }'
-                
-                # resp = requests.post(url, headers=headers, data=par_data)
-                # resp = requests.post(url, headers=headers, data=par_data)
+                headers = CaseInsensitiveDict()
+                headers["Authorization"] = "bearer " + token
+                ws_size = 1000
+                ws_pagina = 1
+                ws_total = 1
 
-                #url = "https://api.nexti.com/security/oauth/token"
-                #resp = requests.get(url, data=par_data)
+                logger.info('Deletando ['+ tbl_destino + ']...')
+                with engine.connect() as con0:
+                     r_del = con0.execute(exec_clear)
 
+                while (ws_pagina<=ws_total):
+                     params = exec_comando.split('|')
+                     url = cnx_url+params[2]+'?size='+str(ws_size)+'&page='+str(ws_pagina-1)
+                     data = requests.get(url, headers=headers).json()
+                     with open("/opt/oracle/upapi/error.txt", "w") as text_file:
+                          text_file.write(str(data))
+                     if  ws_pagina == 1:
+                         ws_total = math.ceil(data['totalElements'] / ws_size) 
 
-                #url = "https://api.nexti.com/security/oauth/token"
-                #resp = requests.get(url, headers=headers)
+                     if params[0] == "full_line":
+                        dados = pd.json_normalize(data['content'])
+                     else:    
+                        dados = pd.json_normalize(data['content'])
+                        dados = pd.DataFrame(data['content']).explode(params[1]).reset_index(drop=True)
+                        dados = pd.concat([dados,pd.json_normalize(dados[params[1]].dropna(),errors='ignore').add_prefix("it_")],axis=1)
 
-                url = "https://api.nexti.com/security/oauth/token?grant_type=client_credentials&client_id=gruposetup&client_secret=611e03d43da3c23a1431027405c993e22b9643c4"
-                resp = requests.get(url)
+                     dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
+                     object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+                     dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+                     colunas = dados.columns
+                     dados = dados.rename(columns=lambda x: x.split('.')[-1])
 
-                logger.info('a1')
-                logger.info(resp)
+                     for index in range(len(tab_colunas)):
+                         if  tab_colunas[index] not in dados.columns:
+                             dados[tab_colunas[index]]=''
+                     dados = dados[tab_colunas]
 
-                # w_token = json.loads(resp.text)['jsonToken']
-                # w_token = json.loads(w_token)
-                # token = w_token['access_token']
-
-                #headers = CaseInsensitiveDict()
-                #headers["client_id"] = cnx_api_key
-                #headers["Authorization"] = "Bearer "+token
-                #headers["accept"] = "application/json"
-#
-                #ws_size = 1000
-                #ws_pagina = 1
-                #ws_total = 2
-#
-                #while (ws_pagina<=ws_total):
-                #     params = exec_comando.split('|')
-                #     url = cnx_url+params[2]+'?size='+str(ws_size)+'&offset='+str(ws_pagina-1)+'&'+params[3]
-                #     data = requests.get(url, headers=headers).json()
-                #     with open("/opt/oracle/upapi/error.txt", "w") as text_file:
-                #          text_file.write(str(data))
-                #     if  ws_pagina == 1:
-                #         ws_total = data['totalPages']
-#
-                #     #dados = pd.json_normalize(data['contents'])
-                #     if params[0] == "full_line":
-                #        dados = pd.json_normalize(data['contents'])
-                #     else:    
-                #        dados = pd.json_normalize(data['contents'])
-                #        dados = pd.DataFrame(data['contents']).explode(params[1]).reset_index(drop=True)
-                #        dados = pd.concat([dados,pd.json_normalize(dados[params[1]].dropna(),errors='ignore').add_prefix("it_")],axis=1)
-#
-                #     ws_pagina += 1
-                #     dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
-                #     object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-                #     dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-                #     colunas = dados.columns
-                #     dados = dados.rename(columns=lambda x: x.split('.')[-1])
-                #     for index in range(len(tab_colunas)):
-                #         if  tab_colunas[index] not in dados.columns:
-                #             dados[tab_colunas[index]]=''
-                #     dados = dados[tab_colunas]
-#
-                #     con = cx_Oracle.connect(user=fonte_user,password= fonte_pass, dsn=dsn,encoding="UTF-8")
-                #     cur = con.cursor()
-                #     id_clear=[]
-                #     for lista in dados['id']:
-                #         id_clear.append([lista])
-                #     logger.info('Delete: '+str(len(id_clear)))
-                #     cur.executemany(exec_clear, id_clear)
-                #     con.commit()
-                #     con.close()
-                #     with engine.connect() as con0:
-                #          dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
-                #          r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
-#
+                     logger.info('Inserindo [' + tbl_destino + ']... (' + str(ws_pagina) + '/' + str(ws_total) + ')')
+                     with engine.connect() as con0:
+                          dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                          r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+                     
+                     ws_pagina += 1
             except Exception as e:
-                erros='Erro HCM_SENIOR: '+str(e)[0:3500]
+                erros='Erro ' + get_type.upper() + ' : '+str(e)[0:3500]
                 logger.error(erros)
                 with engine.connect() as con0:
                      r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
-
 
      except Exception as e:
         erros=str(e)[0:3000]
