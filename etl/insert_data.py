@@ -456,15 +456,28 @@ def exec_client(cfg_cliente):
 
                 while (ws_pagina<=ws_total):
                      params = exec_comando.split('|')
-                     url = cnx_url+params[2]+'?size='+str(ws_size)+'&page='+str(ws_pagina-1)
+                     if (params[2]).find('?') == -1:
+                        url = cnx_url+params[2]+'?size='+str(ws_size)+'&page='+str(ws_pagina-1)
+                     else: 
+                        url = cnx_url+params[2]+'&size='+str(ws_size)+'&page='+str(ws_pagina-1)
+
                      data = requests.get(url, headers=headers).json()
                      with open("/opt/oracle/upapi/error.txt", "w") as text_file:
                           text_file.write(str(data))
-                     if  ws_pagina == 1:
-                         ws_total = math.ceil(data['totalElements'] / ws_size) 
+                     
+                     if 'totalElements' in data:
+                         if  ws_pagina == 1:
+                             ws_total = math.ceil(data['totalElements'] / ws_size) 
+                     else: 
+                         if params[0] == "full_line":
+                            ws_total = 1 
+                         else:
+                            raise Exception(data.text)
 
-                     if params[0] == "full_line":
+                     if params[0] == "full_content":                        
                         dados = pd.json_normalize(data['content'])
+                     elif params[0] == "full_line":
+                        dados = pd.json_normalize(data)
                      else:    
                         dados = pd.json_normalize(data['content'])
                         dados = pd.DataFrame(data['content']).explode(params[1]).reset_index(drop=True)
