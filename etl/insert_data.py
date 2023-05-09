@@ -391,7 +391,7 @@ def exec_client(cfg_cliente):
                      if  ws_pagina == 1:
                          ws_total = data['totalPages']
 
-                     if params[0] == "full_line":
+                     if params[0] == "full_line" or params[0] == "full_content":
                         dados = pd.json_normalize(data['contents'])
                      else:    
                         dados = pd.json_normalize(data['contents'])
