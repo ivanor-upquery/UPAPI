@@ -138,7 +138,7 @@ def exec_client(cfg_cliente):
         if  cnx_db == "ORACLE":
             dsn_origem = cx_Oracle.makedsn(cnx_host, cnx_port, cnx_service)
             con = cx_Oracle.connect(user=cnx_user,password=cnx_pass, dsn=dsn_origem)
-        if  cnx_db in ('API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL'):
+        if  cnx_db in ('API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL','TXT'):
             get_type = cnx_db.lower()
 
         if  get_type == "db_con": 
@@ -155,7 +155,7 @@ def exec_client(cfg_cliente):
                  dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                  r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
-        if  get_type == "excel": 
+        if  get_type == "excel":
 
             try:
                 engine.fast_executemany = True
@@ -175,7 +175,44 @@ def exec_client(cfg_cliente):
                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
             except Exception as e:
-                erros='Erro EXCEL: '+str(e)[0:3500]
+                erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
+                logger.error(erros)
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
+
+        if  get_type == "txt": 
+
+            # Pega os parametros do comando 
+            exec_comando = exec_comando.replace('|', sep_comando)
+            params       = exec_comando.split(sep_comando)
+            try:
+                ws_arquivo   = params[0] 
+                ws_separador = params[1] 
+            except Exception as e:
+                raise Exception('Numero incorreto de parâmetros no comando ['+ str(e)[0:3500] + ']')
+
+            if (ws_separador == '' or ws_separador is None) :
+                raise Exception('Deve ser informado o parâmetro SEPARADOR no cadastro da conexão.')
+
+            try:
+                engine.fast_executemany = True
+                if  cnx_type_file == 'SERVER_FTP':
+                    dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador); 
+
+                object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+                dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
+
+                with engine.connect() as con0:
+                     r_del = con0.execute(exec_clear)
+
+                with engine.connect() as con0:
+                     dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                
+                with engine.connect() as con0:
+                    r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', erros=null where id_uniq=:1",id_uniq)
+
+            except Exception as e:
+                erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 logger.error(erros)
                 with engine.connect() as con0:
                      r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
@@ -461,20 +498,30 @@ def exec_client(cfg_cliente):
                      else: 
                         url = cnx_url+params[2]+'&size='+str(ws_size)+'&page='+str(ws_pagina-1)
 
-                     data = requests.get(url, headers=headers).json()
-                     with open("/opt/oracle/upapi/error.txt", "w") as text_file:
+                     resp = requests.get(url, headers=headers)
+                     data = resp.json()
+                     with open("/opt/oracle/upapi/error"+str(ws_pagina)+".txt", "w") as text_file:
                           text_file.write(str(data))
-                     
-                     if 'totalElements' in data:
-                         if  ws_pagina == 1:
-                             ws_total = math.ceil(data['totalElements'] / ws_size) 
-                     else: 
-                         if params[0] == "full_line":
-                            ws_total = 1 
-                         else:
-                            raise Exception(data.text)
 
-                     if params[0] == "full_content":                        
+
+                     # --------------- Valida conteudo retornado -------------------------
+                     if 'status' in data and 'error' in data:
+                       raise Exception('Erro retornado pela API '+ '[pagina='+str(ws_pagina)+'/'+str(ws_total)+']: ' + str(data['status']) + str(data['error']))  
+                     if resp.status_code != 200:
+                       raise Exception('Erro retornado pela API '+ '[pagina='+str(ws_pagina)+'/'+str(ws_total)+']: ' + str(data.status_code))
+                     if 'message' in data:
+                        raise Exception(data['message'])
+                     if params[0] == "full_content" and ws_pagina == 1 and 'totalElements' not in data:
+                        raise Exception('Registro do tipo CONTENT não retornou o elemento [totalElements]')
+                     
+                     # ---------------Pega o total de paginas retornadas ---------------------
+                     if ws_pagina == 1:
+                        ws_total = 1 
+                        if 'totalElements' in data:
+                             ws_total = math.ceil(data['totalElements'] / ws_size) 
+
+                     # --------------- Pega o total de paginas retornadas --------------------
+                     if params[0] == "full_content": 
                         dados = pd.json_normalize(data['content'])
                      elif params[0] == "full_line":
                         dados = pd.json_normalize(data)
@@ -483,6 +530,7 @@ def exec_client(cfg_cliente):
                         dados = pd.DataFrame(data['content']).explode(params[1]).reset_index(drop=True)
                         dados = pd.concat([dados,pd.json_normalize(dados[params[1]].dropna(),errors='ignore').add_prefix("it_")],axis=1)
 
+                     # --------------- Pega as colunas e os dados para o Insert -------------------------
                      dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
                      object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
                      dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
@@ -497,9 +545,16 @@ def exec_client(cfg_cliente):
                      logger.info('Inserindo [' + tbl_destino + ']... (' + str(ws_pagina) + '/' + str(ws_total) + ')')
                      with engine.connect() as con0:
                           dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
-                          r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
-                     
+                          cnt = pd.read_sql_query("select count(*) as cnt from ETL_FILA where status='C' and id_uniq=:1",con=con0,params=[id_uniq])
+                          if cnt['cnt'].values[0] > 0:
+                              raise Exception('Insert cancelado pelo usuário [STATUS=C] [pagina='+str(ws_pagina)+'/'+str(ws_total)+']')
+                    
                      ws_pagina += 1
+
+                # --------------- Atualiza o status da Fila -------------------------
+                with engine.connect() as con0:
+                    r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', erros=null where id_uniq=:1",id_uniq)
+
             except Exception as e:
                 erros='Erro ' + get_type.upper() + ' : '+str(e)[0:3500]
                 logger.error(erros)
@@ -526,6 +581,7 @@ config = ConfigParser.ConfigParser()
 config.readfp(open(r'/opt/oracle/upapi/upquery_etl.ini'))
 log_file = config['DEFAULT'].get('logfile','/opt/oracle/upapi/upquery_etl.log')
 config.readfp(open(r'/opt/oracle/upapi/upquery_etl.ini'))
+sep_comando = '[#SEP#]'
 
 logging.basicConfig(filename=log_file, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 logger = logging.getLogger()
@@ -533,7 +589,7 @@ logger = logging.getLogger()
 chk = datetime.today()
 h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
 
-drivers = ['FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL']
+drivers = ['FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT']
 
 logger.info('Serviço Iniciado [UPQUERY_ETL]')
 
