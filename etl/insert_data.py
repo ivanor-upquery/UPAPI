@@ -183,8 +183,11 @@ def exec_client(cfg_cliente):
         if  get_type == "txt": 
 
             # Pega os parametros do comando 
+            logger.info('a1')
             exec_comando = exec_comando.replace('|', sep_comando)
+            logger.info('a2')
             params       = exec_comando.split(sep_comando)
+            logger.info('a3')
             try:
                 ws_arquivo   = params[0] 
                 ws_separador = params[1] 
