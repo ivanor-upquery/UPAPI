@@ -1,3 +1,0 @@
-cod	nome	data
-001	teste1	01/01/2023
-002	teste2	02/01/2023
