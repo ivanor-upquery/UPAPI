@@ -155,65 +155,42 @@ def exec_client(cfg_cliente):
                  dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                  r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
-        if  get_type == "excel":
+        if  get_type == "excel" or get_type == "txt":
 
-            try:
-                engine.fast_executemany = True
-                if  cnx_type_file == 'SERVER_FTP':
-                    dados = pd.read_excel(cnx_loc_file+exec_comando, engine='openpyxl')
-
-                object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-                dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
-
-                with engine.connect() as con0:
-                     r_del = con0.execute(exec_clear)
-
-                with engine.connect() as con0:
-                     dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
-                
-                with engine.connect() as con0:
-                    r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
-
-            except Exception as e:
-                erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
-                logger.error(erros)
-                with engine.connect() as con0:
-                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
-
-        if  get_type == "txt": 
-
-            # Pega os parametros do comando 
-            logger.info('a1')
-            exec_comando = exec_comando.replace('|', sep_comando)
-            logger.info('a2')
-            params       = exec_comando.split(sep_comando)
-            logger.info('a3')
+            # --- Pega os parametros do comando -----------------------------------------------------------
+            if exec_comando is None:
+                raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.')
+            params = exec_comando.replace('|', sep_comando).split(sep_comando)
             try:
                 ws_arquivo   = params[0] 
-                ws_separador = params[1] 
+                ws_separador = (params[1] if get_type == "txt" else "")
             except Exception as e:
                 raise Exception('Numero incorreto de parâmetros no comando ['+ str(e)[0:3500] + ']')
 
-            if (ws_separador == '' or ws_separador is None) :
-                raise Exception('Deve ser informado o parâmetro SEPARADOR no cadastro da conexão.')
-
             try:
+                # --- Lê arquivo -----------------------------------------------------------
                 engine.fast_executemany = True
-                if  cnx_type_file == 'SERVER_FTP':
-                    dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador); 
+                if get_type == "excel":
+                    if ws_arquivo[-3:].upper() == 'XLS':
+                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='xlrd')
+                    else:     
+                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='openpyxl')
+                else:
+                    dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador)
 
                 object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
                 dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
 
-                with engine.connect() as con0:
-                     r_del = con0.execute(exec_clear)
+                # --- Exclui registros -----------------------------------------------------------
+                if exec_clear is not None:
+                    with engine.connect() as con0:
+                         r_del = con0.execute(exec_clear)
 
+                # --- Insere registros e atualiza status da fila -----------------------------------------------------------
                 with engine.connect() as con0:
                      dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
                 
-                with engine.connect() as con0:
-                    r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', erros=null where id_uniq=:1",id_uniq)
-
             except Exception as e:
                 erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 logger.error(erros)
