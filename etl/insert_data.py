@@ -160,16 +160,22 @@ def exec_client(cfg_cliente):
             # --- Pega os parametros do comando -----------------------------------------------------------
             if exec_comando is None:
                 raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.')
-            params = exec_comando.replace('|', sep_comando).split(sep_comando)
+            params = exec_comando.split(sep_comando)
             try:
-                ws_arquivo   = params[0] 
+                ws_arquivo   = (params[0]).strip()
                 ws_separador = (params[1] if get_type == "txt" else "")
             except Exception as e:
                 raise Exception('Numero incorreto de parâmetros no comando ['+ str(e)[0:3500] + ']')
 
+            if ws_arquivo.find("'") != -1:
+                raise Exception('Nome do arquivo nao pode conter ASPAS.')
+
             try:
                 # --- Lê arquivo -----------------------------------------------------------
                 engine.fast_executemany = True
+                logger.info('a1')
+                logger.info(ws_arquivo[-3:].upper()) 
+
                 if get_type == "excel":
                     if ws_arquivo[-3:].upper() == 'XLS':
                         dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='xlrd')
@@ -454,7 +460,6 @@ def exec_client(cfg_cliente):
                 token = str(base64.b64encode(token)).replace("b'","").replace("'","") 
                 headers["Authorization"] = "Basic " + token # "Z3J1cG9zZXR1cDo2MTFlMDNkNDNkYTNjMjNhMTQzMTAyNzQwNWM5OTNlMjJiOTY0M2M0"
                 url = url+"?grant_type=client_credentials&client_id="+cnx_api_key+"&client_secret="+cnx_secret
-
                 resp = requests.post(url, headers=headers)
                 if resp.status_code != 200:
                     raise Exception('Erro obtendo Token de acesso aos dados')
@@ -561,7 +566,7 @@ config = ConfigParser.ConfigParser()
 config.readfp(open(r'/opt/oracle/upapi/upquery_etl.ini'))
 log_file = config['DEFAULT'].get('logfile','/opt/oracle/upapi/upquery_etl.log')
 config.readfp(open(r'/opt/oracle/upapi/upquery_etl.ini'))
-sep_comando = '[#SEP#]'
+sep_comando = '|'
 
 logging.basicConfig(filename=log_file, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 logger = logging.getLogger()
