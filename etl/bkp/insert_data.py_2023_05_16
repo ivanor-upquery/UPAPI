@@ -1,4 +1,3 @@
-import pyodbc
 import fdb
 import psycopg2
 import pymysql
@@ -88,7 +87,6 @@ def exec_client(cfg_cliente):
 
      with engine.connect() as con0:
           data_con      = pd.read_sql_query('select * from ETL_CONEXOES where id_conexao = :1',con=con0,params=parbuf)
-          cnx_driver    = get_par(data_con,'DRIVER','')
           cnx_host      = get_par(data_con,'HOST','')
           cnx_port      = int(get_par(data_con,'PORTA',0))
           cnx_dbase     = get_par(data_con,'DATABASE','')
@@ -102,6 +100,7 @@ def exec_client(cfg_cliente):
           cnx_service   = get_par(data_con,'SERVICE','')
           cnx_api_key   = get_par(data_con,'API_KEY','')
           cnx_secret    = get_par(data_con,'SECRET','')
+          cnx_type_file = get_par(data_con,'TYPE_FILE','')
           cnx_loc_file  = get_par(data_con,'LOC_FILE','')
 
      if  cnx_db not in drivers:
@@ -128,8 +127,6 @@ def exec_client(cfg_cliente):
 
         get_type = 'db_con'
 
-        if  cnx_db == "ODBC":
-            con = pyodbc.connect('DRIVER= {'+cnx_driver+'}; SERVER='+cnx_host+'; DATABASE='+cnx_dbase+'; UID='+cnx_user+'; PWD='+cnx_pass)
         if  cnx_db == "FIREBIRD":
             con = fdb.connect(host=cnx_host, port=cnx_port, database=cnx_dbase, user=cnx_user, password=cnx_pass, charset=cnx_charset)
         if  cnx_db == "POSTGRESQL":
@@ -141,7 +138,7 @@ def exec_client(cfg_cliente):
         if  cnx_db == "ORACLE":
             dsn_origem = cx_Oracle.makedsn(cnx_host, cnx_port, cnx_service)
             con = cx_Oracle.connect(user=cnx_user,password=cnx_pass, dsn=dsn_origem)
-        if  cnx_db in ('API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL','TXT','API_TRELLO'):
+        if  cnx_db in ('API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL','TXT'):
             get_type = cnx_db.lower()
 
         if  get_type == "db_con": 
@@ -163,7 +160,7 @@ def exec_client(cfg_cliente):
             # --- Pega os parametros do comando -----------------------------------------------------------
             if exec_comando is None:
                 raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.')
-            params = exec_comando.split('|')
+            params = exec_comando.split(sep_comando)
             try:
                 ws_arquivo   = (params[0]).strip()
                 ws_separador = (params[1] if get_type == "txt" else "")
@@ -349,8 +346,8 @@ def exec_client(cfg_cliente):
                      r_del = con0.execute(exec_clear)
                 while (ws_pagina<ws_total):
                      data   = requests.post(url=cnx_url, json=par_content).json()
-                     #with open('/opt/oracle/upapi/data.json', 'w') as f:
-                     #     json.dump(data, f)
+#                     with open('/opt/oracle/upapi/data.json', 'w') as f:
+#                          json.dump(data, f)
                      ws_pagina = data['pagina']
                      ws_total  = data['total_de_paginas']
                      par_content['param'][0]['pagina'] = ws_pagina + 1
@@ -488,8 +485,8 @@ def exec_client(cfg_cliente):
 
                      resp = requests.get(url, headers=headers)
                      data = resp.json()
-                     # with open("/opt/oracle/upapi/error"+str(ws_pagina)+".txt", "w") as text_file:
-                     #     text_file.write(str(data))
+                     with open("/opt/oracle/upapi/error"+str(ws_pagina)+".txt", "w") as text_file:
+                          text_file.write(str(data))
 
 
                      # --------------- Valida conteudo retornado -------------------------
@@ -549,75 +546,6 @@ def exec_client(cfg_cliente):
                 with engine.connect() as con0:
                      r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
-        if  get_type == "api_trello":    # sem paginação # parametros 
-            try:
-                if exec_comando is None:
-                    raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.')
-                if len(tab_colunas) == 0:
-                    raise Exception('Erro pegando colunas da tabela de destino, verifique se o nome da tabela foi informada corretamente ['+tbl_destino.upper()+'].') 
-
-                # --- Pega os parametros do comando -----------------------------------------------------------
-                params = exec_comando.split('|')
-                try:
-                    ws_url_api   = (params[0]).strip()
-                    ws_url_cods  = (params[1]).strip().split(';')
-                except Exception as e:
-                    raise Exception('Numero incorreto de parâmetros no comando ['+ str(e)[0:3500] + ']')
-
-                if ws_url_api.find('$[') != -1 and len(ws_url_cods) == 0:
-                    raise Exception('Nome do arquivo nao pode conter ASPAS.')
-
-                if len(ws_url_cods) == 0:  # --- se o array de parametros do comando estiver zerado, adiciona 1 elemento para que entre no loop abaixo 
-                    ws_url_cods[0] = ""
-
-                # --- Deleta registro da tabela
-                logger.info('Deletando ['+ tbl_destino + ']...')
-                with engine.connect() as con0:
-                    r_del = con0.execute(exec_clear)
-
-                ws_count = 0
-                ws_total = len(ws_url_cods)
-                for cod in ws_url_cods: 
-                    ws_count = ws_count + 1
-                    url = cnx_url + ws_url_api.replace(":1",cod) +'?key='+cnx_api_key+'&token='+cnx_secret
-                    resp = requests.get(url)
-                    data = resp.json()
-                    with open("/opt/oracle/upapi/error.txt", "w") as text_file:
-                        text_file.write(str(data))
-
-                    # --------------- Valida conteudo retornado -------------------------
-                    if resp.status_code != 200:
-                       raise Exception('Erro retornado pela API :' + str(data.status_code) + 'URL_API:'+ url)
- 
-                    # --------------- Pega as colunas e os dados para o Insert -------------------------
-                    dados = pd.json_normalize(data)
-                    dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
-                    object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-                    dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-                    dados = dados.rename(columns=lambda x: x.split('.')[-1])
-
-                    for index in range(len(tab_colunas)):
-                        if  tab_colunas[index] not in dados.columns:
-                            dados[tab_colunas[index]]=''
-                    dados = dados[tab_colunas]
-
-                    logger.info('Inserindo [' + tbl_destino + ']... (' + str(ws_count) + '/' + str(ws_total) + ')')
-                    with engine.connect() as con0:
-                         dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
-                         cnt = pd.read_sql_query("select count(*) as cnt from ETL_FILA where status='C' and id_uniq=:1",con=con0,params=[id_uniq])
-                         if cnt['cnt'].values[0] > 0:
-                             raise Exception('Insert cancelado pelo usuário [STATUS=C] [pagina='+str(ws_count)+'/'+str(ws_total)+']')
-                   
-                # --------------- Atualiza o status da Fila -------------------------
-                with engine.connect() as con0:
-                    r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', erros=null where id_uniq=:1",id_uniq)
-
-            except Exception as e:
-                erros='Erro ' + get_type.upper() + ' : '+str(e)[0:3500]
-                logger.error(erros)
-                with engine.connect() as con0:
-                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
-
      except Exception as e:
         erros=str(e)[0:3000]
         logger.error(erros)
@@ -638,6 +566,7 @@ config = ConfigParser.ConfigParser()
 config.readfp(open(r'/opt/oracle/upapi/upquery_etl.ini'))
 log_file = config['DEFAULT'].get('logfile','/opt/oracle/upapi/upquery_etl.log')
 config.readfp(open(r'/opt/oracle/upapi/upquery_etl.ini'))
+sep_comando = '|'
 
 logging.basicConfig(filename=log_file, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 logger = logging.getLogger()
@@ -645,8 +574,7 @@ logger = logging.getLogger()
 chk = datetime.today()
 h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
 
-drivers = ['FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT','API_TRELLO']
-
+drivers = ['FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT']
 
 logger.info('Serviço Iniciado [UPQUERY_ETL]')
 
