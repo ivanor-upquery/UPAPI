@@ -1,4 +1,4 @@
-#import pyodbc
+import pyodbc
 import fdb
 import psycopg2
 import pymysql
@@ -128,8 +128,8 @@ def exec_client(cfg_cliente):
 
         get_type = 'db_con'
 
-        #if  cnx_db == "ODBC":
-        #    con = pyodbc.connect('DRIVER= {'+cnx_driver+'}; SERVER='+cnx_host+'; DATABASE='+cnx_dbase+'; UID='+cnx_user+'; PWD='+cnx_pass)
+        if  cnx_db == "ODBC":
+            con = pyodbc.connect('DRIVER= {'+cnx_driver+'}; SERVER='+cnx_host+'; DATABASE='+cnx_dbase+'; UID='+cnx_user+'; PWD='+cnx_pass)
         if  cnx_db == "FIREBIRD":
             con = fdb.connect(host=cnx_host, port=cnx_port, database=cnx_dbase, user=cnx_user, password=cnx_pass, charset=cnx_charset)
         if  cnx_db == "POSTGRESQL":
