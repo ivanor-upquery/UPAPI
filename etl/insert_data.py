@@ -30,6 +30,7 @@ import configparser as ConfigParser
 # >>>> Formato Parametro <<<<
 # >>>>
 
+
 def get_par(dados,parametro,defval):
     try:
         retorno = dados.loc[dados['cd_parametro'] == parametro]['conteudo'].values[0]
