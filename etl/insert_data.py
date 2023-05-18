@@ -551,7 +551,9 @@ def exec_client(cfg_cliente):
                      r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
         if  get_type == "api_trello":    # sem paginação # parametros 
+            ws_passo = ''
             try:
+                ws_passo = 'PARAMETROS'
                 if exec_comando is None:
                     raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.')
                 if len(tab_colunas) == 0:
@@ -576,6 +578,7 @@ def exec_client(cfg_cliente):
                     ws_url_params[0] = ""
 
                 # --- Deleta registros da tabela
+                ws_passo = 'DELETE'
                 if exec_clear is not None:
                     logger.info('Deletando ['+ tbl_destino + ']...')
                     with engine.connect() as con0:
@@ -583,9 +586,14 @@ def exec_client(cfg_cliente):
 
                 ws_count = 0
                 ws_total = len(ws_url_params)
+
+                ws_passo = 'FOR'
                 for url_param in ws_url_params: 
                     ws_count = ws_count + 1
+                    logger.info('Inserindo [' + tbl_destino + ']... (' + str(ws_count) + '/' + str(ws_total) + ')')
                     url = cnx_url + ws_url_api.replace(":1",url_param) +'?key='+cnx_api_key+'&token='+cnx_secret
+                    
+                    ws_passo = 'REQUEST'
                     resp = requests.get(url)
                     data = resp.json()
                     with open("/opt/oracle/upapi/error.txt", "w") as text_file:
@@ -596,6 +604,7 @@ def exec_client(cfg_cliente):
                        raise Exception('Erro retornado pela API :' + str(data.status_code) + 'URL_API:'+ url)
  
                     # --------------- Pega as colunas e os dados para o Insert -------------------------
+                    ws_passo = 'NORMALIZE'
                     if ws_tp_reg == "full_content": 
                         dados = pd.json_normalize(data['content'])
                     elif ws_tp_reg == "full_line":
@@ -620,7 +629,7 @@ def exec_client(cfg_cliente):
                             dados[tab_colunas[index]]=''
                     dados = dados[tab_colunas]
 
-                    logger.info('Inserindo [' + tbl_destino + ']... (' + str(ws_count) + '/' + str(ws_total) + ')')
+                    ws_passo = 'INSERT'
                     with engine.connect() as con0:
                          dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                          cnt = pd.read_sql_query("select count(*) as cnt from ETL_FILA where status='C' and id_uniq=:1",con=con0,params=[id_uniq])
@@ -628,11 +637,12 @@ def exec_client(cfg_cliente):
                              raise Exception('Insert cancelado pelo usuário [STATUS=C] [pagina='+str(ws_count)+'/'+str(ws_total)+']')
                    
                 # --------------- Atualiza o status da Fila -------------------------
+                ws_passo = 'STATUS'
                 with engine.connect() as con0:
                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', erros=null where id_uniq=:1",id_uniq)
 
             except Exception as e:
-                erros='Erro ' + get_type.upper() + ' : '+str(e)[0:3500]
+                erros='Erro ' + get_type.upper()+'['+ ws_passo +']: ' +str(e)[0:3500]
                 logger.error(erros)
                 with engine.connect() as con0:
                      r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
