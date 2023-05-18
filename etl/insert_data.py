@@ -590,7 +590,7 @@ def exec_client(cfg_cliente):
                 ws_passo = 'FOR'
                 for url_param in ws_url_params: 
                     ws_count = ws_count + 1
-                    logger.info('Inserindo [' + tbl_destino + ']... (' + str(ws_count) + '/' + str(ws_total) + ')')
+                    # logger.info('Inserindo [' + tbl_destino + ']... (' + str(ws_count) + '/' + str(ws_total) + ')')
                     url = cnx_url + ws_url_api.replace(":1",url_param) +'?key='+cnx_api_key+'&token='+cnx_secret
                     
                     ws_passo = 'REQUEST'
@@ -637,6 +637,7 @@ def exec_client(cfg_cliente):
                              raise Exception('Insert cancelado pelo usuário [STATUS=C] [pagina='+str(ws_count)+'/'+str(ws_total)+']')
                    
                 # --------------- Atualiza o status da Fila -------------------------
+                logger.info(tbl_destino + ' - Registros inseridos [' + str(ws_count) + ']')
                 ws_passo = 'STATUS'
                 with engine.connect() as con0:
                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', erros=null where id_uniq=:1",id_uniq)
