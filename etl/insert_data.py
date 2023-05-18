@@ -560,23 +560,26 @@ def exec_client(cfg_cliente):
                 # --- Pega os parametros do comando -----------------------------------------------------------
                 params = exec_comando.split('|')
                 try:
-                    ws_tp_reg     = (params[0]).strip()
+                    ws_tp_reg     = (params[0]).strip().lower()
                     ws_occur      = (params[1]).strip()
                     ws_url_api    = (params[2]).strip()
                     ws_url_params = (params[3]).strip().split(';')
                 except Exception as e:
                     raise Exception('Numero incorreto de parâmetros no comando ['+ str(e)[0:3500] + ']')
 
-                if ws_url_api.find('$[') != -1 and len(ws_url_params) == 0:
-                    raise Exception('Nome do arquivo nao pode conter ASPAS.')
+                if ws_url_api.find(':1') != -1 and len(ws_url_params) == 0:
+                    raise Exception('Necessario informar os parametros da URL no comando.')
+                if ws_tp_reg == 'occur_line' and len(ws_occur) == 0:
+                    raise Exception('Necessario informar o registro OCCUR_LINE para esse tipo de comando.')
 
                 if len(ws_url_params) == 0:  # --- se o array de parametros do comando estiver zerado, adiciona 1 elemento para que entre no loop abaixo 
                     ws_url_params[0] = ""
 
-                # --- Deleta registro da tabela
-                logger.info('Deletando ['+ tbl_destino + ']...')
-                with engine.connect() as con0:
-                    r_del = con0.execute(exec_clear)
+                # --- Deleta registros da tabela
+                if exec_clear is not None:
+                    logger.info('Deletando ['+ tbl_destino + ']...')
+                    with engine.connect() as con0:
+                        r_del = con0.execute(exec_clear)
 
                 ws_count = 0
                 ws_total = len(ws_url_params)
