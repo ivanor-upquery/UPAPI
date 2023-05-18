@@ -130,7 +130,7 @@ def exec_client(cfg_cliente):
         get_type = 'db_con'
 
         if  cnx_db == "ODBC":
-            con = pyodbc.connect('DRIVER= {'+cnx_driver+'}; SERVER='+cnx_host+'; DATABASE='+cnx_dbase+'; UID='+cnx_user+'; PWD='+cnx_pass)
+            con = pyodbc.connect('DRIVER={'+cnx_driver+'};HOST='+cnx_host+';PORT='+cnx_port+';DB='+cnx_dbase+';UID='+cnx_user+';PWD='+cnx_pass)
         if  cnx_db == "FIREBIRD":
             con = fdb.connect(host=cnx_host, port=cnx_port, database=cnx_dbase, user=cnx_user, password=cnx_pass, charset=cnx_charset)
         if  cnx_db == "POSTGRESQL":
@@ -509,7 +509,7 @@ def exec_client(cfg_cliente):
                         if 'totalElements' in data:
                              ws_total = math.ceil(data['totalElements'] / ws_size) 
 
-                     # --------------- Pega o total de paginas retornadas --------------------
+                     # --------------- Pega o conteudo --------------------
                      if params[0] == "full_content": 
                         dados = pd.json_normalize(data['content'])
                      elif params[0] == "full_line":
@@ -560,16 +560,18 @@ def exec_client(cfg_cliente):
                 # --- Pega os parametros do comando -----------------------------------------------------------
                 params = exec_comando.split('|')
                 try:
-                    ws_url_api   = (params[0]).strip()
-                    ws_url_cods  = (params[1]).strip().split(';')
+                    ws_tp_reg     = (params[0]).strip()
+                    ws_occur      = (params[1]).strip()
+                    ws_url_api    = (params[2]).strip()
+                    ws_url_params = (params[3]).strip().split(';')
                 except Exception as e:
                     raise Exception('Numero incorreto de parâmetros no comando ['+ str(e)[0:3500] + ']')
 
-                if ws_url_api.find('$[') != -1 and len(ws_url_cods) == 0:
+                if ws_url_api.find('$[') != -1 and len(ws_url_params) == 0:
                     raise Exception('Nome do arquivo nao pode conter ASPAS.')
 
-                if len(ws_url_cods) == 0:  # --- se o array de parametros do comando estiver zerado, adiciona 1 elemento para que entre no loop abaixo 
-                    ws_url_cods[0] = ""
+                if len(ws_url_params) == 0:  # --- se o array de parametros do comando estiver zerado, adiciona 1 elemento para que entre no loop abaixo 
+                    ws_url_params[0] = ""
 
                 # --- Deleta registro da tabela
                 logger.info('Deletando ['+ tbl_destino + ']...')
@@ -577,10 +579,10 @@ def exec_client(cfg_cliente):
                     r_del = con0.execute(exec_clear)
 
                 ws_count = 0
-                ws_total = len(ws_url_cods)
-                for cod in ws_url_cods: 
+                ws_total = len(ws_url_params)
+                for url_param in ws_url_params: 
                     ws_count = ws_count + 1
-                    url = cnx_url + ws_url_api.replace(":1",cod) +'?key='+cnx_api_key+'&token='+cnx_secret
+                    url = cnx_url + ws_url_api.replace(":1",url_param) +'?key='+cnx_api_key+'&token='+cnx_secret
                     resp = requests.get(url)
                     data = resp.json()
                     with open("/opt/oracle/upapi/error.txt", "w") as text_file:
@@ -591,7 +593,20 @@ def exec_client(cfg_cliente):
                        raise Exception('Erro retornado pela API :' + str(data.status_code) + 'URL_API:'+ url)
  
                     # --------------- Pega as colunas e os dados para o Insert -------------------------
-                    dados = pd.json_normalize(data)
+                    if ws_tp_reg == "full_content": 
+                        dados = pd.json_normalize(data['content'])
+                    elif ws_tp_reg == "full_line":
+                        dados = pd.json_normalize(data)
+                    else:    
+                        if "content" in data:
+                            dados = pd.json_normalize(data['content'])
+                            dados = pd.DataFrame(data['content']).explode(ws_occur).reset_index(drop=True)
+                        else: 
+                            dados = pd.json_normalize(data)
+                            dados = pd.DataFrame(data).explode(ws_occur).reset_index(drop=True)
+                        
+                        dados = pd.concat([dados,pd.json_normalize(dados[ws_occur].dropna(),errors='ignore').add_prefix("it_")],axis=1)
+
                     dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
                     object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
                     dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
