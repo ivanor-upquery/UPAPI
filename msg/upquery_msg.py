@@ -53,7 +53,7 @@ def up_sender(p_subject, p_body, p_sender_email, p_receiver_email, p_smtp_server
      if  p_tp_conteudo == 'URL':
          option = Options()
          option.add_argument('--headless')
-         option.add_argument("--no-sandbox");
+         option.add_argument("--no-sandbox")
          option.add_argument('--disable-dev-shm-usage')
          option.add_argument('--single-process')
          option.add_argument('--remote-debugging-port=9222')
