@@ -26,7 +26,7 @@ def get_par(dados,parametro,defval):
            retorno = defval
     return retorno
 
-fonte_host='localhost'
+fonte_host='demo.upquery.com'
 fonte_port=1521
 fonte_serv='controle'
 fonte_user='dwu'
@@ -37,7 +37,7 @@ warnings.filterwarnings("ignore")
 dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
 engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
 
-log_file = '/opt/oracle/upapi/logs/agenda_etl.log'
+log_file = '/opt/oracle/upapi/logs/upquery_egt.log'
 
 logging.basicConfig(filename=log_file, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 logger = logging.getLogger()
