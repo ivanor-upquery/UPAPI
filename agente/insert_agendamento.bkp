@@ -1,0 +1,189 @@
+import cx_Oracle
+import csv
+from io import StringIO
+import numpy as np
+import pandas as pd
+import io
+import sqlalchemy as sa
+import time
+import datetime
+from datetime import datetime, timedelta
+import warnings
+
+from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
+
+def get_par(dados,parametro,defval):
+    try:
+        retorno = dados.loc[dados['cd_parametro'] == parametro]['conteudo'].values[0]
+    except:
+        if defval is None:
+           retorno = ''
+        else:
+           retorno = defval
+    return retorno
+
+fonte_host='localhost'
+fonte_port=1521
+fonte_serv='controle'
+fonte_user='dwu'
+fonte_pass='s82sksw9qskw0'
+
+warnings.filterwarnings("ignore")
+
+dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
+engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
+
+while True:
+     count_exec = 0
+     while(count_exec==0):
+           time.sleep(5)
+           count_run=1
+           with engine.connect() as con0:
+                data_cnt=pd.read_sql_query("select count(*) as cnt from LOCK_CLIENTE where id_cliente = '000000114' and status='A'",con=con0)
+                count_run=data_cnt['cnt'].values[0]
+                con0.close
+           if  count_run==0:
+               try:
+                  connection = engine.raw_connection()
+                  cursor = connection.cursor()
+                  cursor.callproc("exec_agendamento", ['000000114'])
+                  cursor.close()
+                  connection.commit()
+                  with engine.connect() as con0:
+                       data_cnt=pd.read_sql_query("select count(*) as cnt from VM_SYS_FILA",con=con0)
+                       count_exec=data_cnt['cnt'].values[0]
+                       con0.close
+                       if  count_exec != 0:
+                           break
+               except SQLAlchemyError as err:
+                      error = str(err.__cause__)
+                      print('Conn-'+error)
+
+     connection = engine.raw_connection()
+     cursor = connection.cursor()
+     cursor.callproc("lock_status", ['000000114','A'])
+     cursor.close()
+     connection.commit()
+
+     con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=fonte_serv,encoding="UTF-8")
+     cur = con.cursor()
+     cur.execute("select BLOB_CONTENT, ID_CLIENTE, CHECK_ID, ID_ACAO, TABELA_CRITERIO, DB_ORIGEM from VM_SYS_FILA")
+     row = cur.fetchone()
+     blob = row[0].read()
+     blob_content = blob.decode('latin-1')
+     parbuf = []
+     parbuf.append(row[1])
+     parbuf.append(row[2])
+     parbuf.append(row[3])
+     tabela_criterio = row[4]
+     id_cliente =      row[1]
+     cur.close()
+     con.close()
+
+     with engine.connect() as con0:
+          r_back = con0.execute("update TMP_DOCS SET status = 'RUNNING', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
+
+     with engine.connect() as con0:
+          data_con = pd.read_sql_query('select TABELA_TRANSP , ANO_AGENDAMENTO , MES_AGENDAMENTO, ID_CONEXAO from CTB_ACOES_EXEC EXEC where EXEC.id_cliente = :1 and EXEC.check_id = :2 and EXEC.id_acao = :3',con=con0,params=parbuf)
+
+     parcon = []
+     tabela_transp   = data_con['tabela_transp'].values[0]
+     ano_agendamento = data_con['ano_agendamento'].values[0]
+     mes_agendamento = data_con['mes_agendamento'].values[0]
+     parcon.append(data_con['id_conexao'].values[0])
+
+     with engine.connect() as con0:
+          data_con    = pd.read_sql_query('select ID_CONEXAO, CD_PARAMETRO, CONTEUDO from CTB_DESTINO where id_conexao = :1',con=con0,params=parcon)
+          cnx_host    = get_par(data_con,'HOST','')
+          cnx_port    = int(get_par(data_con,'PORTA',0))
+          cnx_user    = get_par(data_con,'USUARIO','')
+          cnx_pass    = get_par(data_con,'SENHA','')
+          cnx_service = get_par(data_con,'SERVICE_NAME','')
+
+     tmp_tabela= tabela_transp.split('@')
+     nm_tabela = tmp_tabela[0]
+     nm_dblink = '@'+tmp_tabela[1]
+
+     print('Iniciado com...['+nm_tabela+']')
+
+     parcli = []
+     parcli.append(id_cliente)
+     p_virgula = ''
+     p_empresas = '('
+     with engine.connect() as con0:
+          data_con = pd.read_sql_query("select prefixo_tabela, identificador_filial from CTB_CLIENTE_EMPRESA where codigo_cliente= :1 and trim(status)='ATIVO'",con=con0,params=parcli)
+          for prefixo in data_con['prefixo_tabela']:
+              if  prefixo:
+                  p_empresas = p_empresas+p_virgula+chr(39)+prefixo+chr(39)
+                  p_virgula = ','
+                  p_empresas = p_empresas+')'
+     if  not p_empresas:
+         p_empresas = ' '
+
+     if  tabela_criterio == 'SCHEDULER':
+         cmd_delete = 'delete '+nm_tabela+' where codigo_empresa = '+chr(39)+id_cliente+chr(39)+' and ano_agendamento = '+chr(39)+ano_agendamento+chr(39)+' and mes_agendamento = '+chr(39)+mes_agendamento+chr(39)+' and cd_empresa in '+p_empresas 
+     else:
+         cmd_delete = 'delete '+nm_tabela+' where cd_empresa in '+p_empresas
+
+     get_colunas = "select column_name from user_tab_columns"+nm_dblink+" where table_name = :1 and column_name not in ('CODIGO_EMPRESA','DT_UPQUERY_REGISTRO','ANO_AGENDAMENTO','MES_AGENDAMENTO') order by column_id"
+
+     parcol = []
+     colunas = []
+     parcol.append(nm_tabela)
+     with engine.connect() as con0:
+          data_con = pd.read_sql_query(get_colunas,con=con0,params=parcol)
+          for c_column in data_con['column_name']:
+              if  c_column:
+                  colunas.append(c_column.lower())
+
+     file = open('read.txt', 'w')
+     file.write(str(blob_content))
+     file.close()
+
+
+     dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",")
+#    dados.insert(loc=0, column='cd_empresa',          value='1')
+     if  tabela_criterio == 'SCHEDULER':
+         dados.insert(loc=0, column='mes_agendamento', value=mes_agendamento)
+         dados.insert(loc=0, column='ano_agendamento', value=ano_agendamento)
+
+
+     data_local = datetime.today()
+     ref_local = data_local.strftime('%Y-%m-%d %H:%M:%S')
+
+     dados.insert(loc=0, column='codigo_empresa',      value=id_cliente)
+     dados.insert(loc=0, column='dt_upquery_registro', value=ref_local)
+
+     colunas = list(dados.columns)
+     dados.columns = colunas
+     dados.columns = dados.columns.str.strip().str.lower()
+
+     object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+     dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+
+     dsn_destino = cx_Oracle.makedsn(cnx_host,port=cnx_port,service_name=cnx_service)
+     destino = create_engine('oracle+cx_oracle://%s:%s@%s' % (cnx_user, cnx_pass, dsn_destino))
+
+     print('Conectado......['+nm_tabela+']')
+
+     try:
+        with destino.connect() as con_destino:
+             con_destino.execute(cmd_delete)
+             con_destino.execute('''alter session set NLS_DATE_FORMAT=\'YYYY-MM-DD HH24:MI:SS\'''')
+             dados.to_sql(name=nm_tabela,con=con_destino, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+             with engine.connect() as con0:
+                  r_back = con0.execute("update TMP_DOCS SET status = 'END', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
+     except:
+        with engine.connect() as con0:
+             r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
+
+     print('finalizado......['+nm_tabela+']')
+     print('-------------------------------')
+
+     connection = engine.raw_connection()
+     cursor = connection.cursor()
+     cursor.callproc("lock_status", ['000000114','I'])
+     cursor.close()
+     connection.commit()
+
