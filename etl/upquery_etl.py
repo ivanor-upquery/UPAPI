@@ -489,15 +489,16 @@ def exec_client(cfg_cliente):
 
                      resp = requests.get(url, headers=headers)
                      data = resp.json()
-                     # with open("/opt/oracle/upapi/error"+str(ws_pagina)+".txt", "w") as text_file:
+                     #with open("/opt/oracle/upapi/error"+str(ws_pagina)+".txt", "w") as text_file:
                      #     text_file.write(str(data))
 
 
                      # --------------- Valida conteudo retornado -------------------------
                      if 'status' in data and 'error' in data:
                        raise Exception('Erro retornado pela API '+ '[pagina='+str(ws_pagina)+'/'+str(ws_total)+']: ' + str(data['status']) + str(data['error']))  
-                     if resp.status_code != 200:
-                       raise Exception('Erro retornado pela API '+ '[pagina='+str(ws_pagina)+'/'+str(ws_total)+']: ' + str(data.status_code))
+                     if 'status_code' in resp:
+                        if resp.status_code != 200:
+                            raise Exception('Erro retornado pela API '+ '[pagina='+str(ws_pagina)+'/'+str(ws_total)+']: ' + str(data.status_code))
                      if 'message' in data:
                         raise Exception(data['message'])
                      if params[0] == "full_content" and ws_pagina == 1 and 'totalElements' not in data:
