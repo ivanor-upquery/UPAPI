@@ -247,7 +247,8 @@ while True:
 
      if  len(threading.enumerate()) < 11:
          with engine.connect() as con0:
-              cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente not in ('000000113','000000096') and id_cliente in ('000000128','000000078','000000037') ",con=con0)
+              #cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente not in ('000000113','000000096') and id_cliente in ('000000128','000000078','000000037') ",con=con0)
+              cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente not in ('000000113','000000096') ",con=con0)
               con0.close
 
          for ind in range(0, len(cliente_status)):
