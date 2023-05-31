@@ -67,11 +67,11 @@ def exec_etl(p_cd_cliente):
                  cursor.close()
                  connection.commit()
                  with engine.connect() as con0:
-                      data_cnt=pd.read_sql_query("select nvl(max(tabela_transp),'N/A') as tabela_transp from CTB_ACOES_EXEC where id_cliente = :b1 and status='STANDBY' ",con=con0, params=pars)
-                      tabela  = data_cnt['tabela_transp'].values[0]
+                      data_cnt=pd.read_sql_query("select count(*) as cnt from CTB_ACOES_EXEC where id_cliente = :b1 and status='STANDBY' ",con=con0, params=pars)
+                      cnt_atu = data_cnt['cnt'].values[0]
                       con0.close
-                 if  tabela != 'N/A' and cnt_ante == 0:
-                     logger.info('Agendado   ['+p_cd_cliente+'] - ['+tabela+']')
+                 if  cnt_atu > 0 and cnt_ante == 0:
+                     logger.info('Agendado   ['+p_cd_cliente+'] - ['+str(cnt_atu)+']')
 
                  with engine.connect() as con0:
                       data_cnt=pd.read_sql_query("select count(*) as cnt from VM_SYS_FILA where id_cliente = :b1 and rownum=1",con=con0, params=pars)
