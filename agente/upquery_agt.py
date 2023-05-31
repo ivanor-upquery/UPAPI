@@ -37,12 +37,11 @@ warnings.filterwarnings("ignore")
 dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
 engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
 
-log_file = '/opt/oracle/upapi/logs/upquery_egt.log'
+log_file = '/opt/oracle/upapi/logs/upquery_agt.log'
 
 logging.basicConfig(filename=log_file, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
 logger = logging.getLogger()
 
-logger.info('Serviço Iniciado [UPQUERY_ETL]')
 
 def exec_etl(p_cd_cliente):
    while True:
@@ -51,7 +50,6 @@ def exec_etl(p_cd_cliente):
          count_run=0
 
          try:
-
              with engine.connect() as con0:
                   data_cnt=pd.read_sql_query("select count(*) as cnt from LOCK_CLIENTE where id_cliente = :b1 and status='A'",con=con0, params=pars)
                   count_run=data_cnt['cnt'].values[0]
@@ -59,11 +57,22 @@ def exec_etl(p_cd_cliente):
              if  count_run > 0:
                  break
              try:
+                 with engine.connect() as con0:
+                      data_cnt=pd.read_sql_query("select count(*) as cnt from CTB_ACOES_EXEC where id_cliente = :b1 and status='STANDBY' ",con=con0, params=pars)
+                      cnt_ante = data_cnt['cnt'].values[0]
+                      con0.close
                  connection = engine.raw_connection()
                  cursor = connection.cursor()
                  cursor.callproc("exec_agendamento", [p_cd_cliente])
                  cursor.close()
                  connection.commit()
+                 with engine.connect() as con0:
+                      data_cnt=pd.read_sql_query("select nvl(max(tabela_transp),'N/A') as tabela_transp from CTB_ACOES_EXEC where id_cliente = :b1 and status='STANDBY' ",con=con0, params=pars)
+                      tabela  = data_cnt['tabela_transp'].values[0]
+                      con0.close
+                 if  tabela != 'N/A' and cnt_ante == 0:
+                     logger.info('Agendado   ['+p_cd_cliente+'] - ['+tabela+']')
+
                  with engine.connect() as con0:
                       data_cnt=pd.read_sql_query("select count(*) as cnt from VM_SYS_FILA where id_cliente = :b1 and rownum=1",con=con0, params=pars)
                       count_exec=data_cnt['cnt'].values[0]
@@ -85,7 +94,8 @@ def exec_etl(p_cd_cliente):
          cursor.close()
          connection.commit()
 
-         con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=fonte_serv,encoding="UTF-8")
+         #con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=fonte_serv,encoding="UTF-8")
+         con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
          cur = con.cursor()
 
          parbuf = []
@@ -115,8 +125,8 @@ def exec_etl(p_cd_cliente):
          ano_agendamento = data_con['ano_agendamento'].values[0]
          mes_agendamento = data_con['mes_agendamento'].values[0]
          parcon.append(p_cd_cliente)
-#         parcon.append(data_con['id_conexao'].values[0])
-         logger.info('Iniciado com...['+tabela_transp+'] - ['+p_cd_cliente+']')
+
+         logger.info('Iniciado   ['+p_cd_cliente+'] - ['+tabela_transp+']')
          with engine.connect() as con0:
               data_con    = pd.read_sql_query('select ID_CLIENTE, CD_PARAMETRO, CONTEUDO from CTB_DESTINO where id_cliente = :1',con=con0,params=parcon)
               cnx_host    = get_par(data_con,'HOST','')
@@ -125,9 +135,10 @@ def exec_etl(p_cd_cliente):
               cnx_pass    = get_par(data_con,'SENHA','')
               cnx_service = get_par(data_con,'SERVICE_NAME','')
 
+         dsn_destino = cx_Oracle.makedsn(cnx_host,port=cnx_port,service_name=cnx_service)
+         destino = create_engine('oracle+cx_oracle://%s:%s@%s' % (cnx_user, cnx_pass, dsn_destino))
          tmp_tabela= tabela_transp.split('@')
          nm_tabela = tmp_tabela[0]
-         nm_dblink = '@'+tmp_tabela[1]
 
          parcli = []
          parcli.append(id_cliente)
@@ -151,16 +162,16 @@ def exec_etl(p_cd_cliente):
          else:
              cmd_delete = 'delete '+nm_tabela+' where cd_empresa in '+p_empresas
 
-         get_colunas = "select column_name from user_tab_columns"+nm_dblink+" where table_name = :1 and column_name not in ('CODIGO_EMPRESA','DT_UPQUERY_REGISTRO','ANO_AGENDAMENTO','MES_AGENDAMENTO') order by column_id"
-
+         # Busca COLUNAS da tabela de insert dos dados 
+         get_colunas = "select column_name from user_tab_columns where table_name = :1 and column_name not in ('CODIGO_EMPRESA','DT_UPQUERY_REGISTRO','ANO_AGENDAMENTO','MES_AGENDAMENTO') order by column_id"
          parcol = []
          colunas = []
          ws_try = 10
          parcol.append(nm_tabela)
-         with engine.connect() as con0:
+         with destino.connect() as con_destino:              
               while(ws_try > 1):
                   try:
-                     data_con = pd.read_sql_query(get_colunas,con=con0,params=parcol)
+                     data_con = pd.read_sql_query(get_colunas,con=con_destino,params=parcol)
                      for c_column in data_con['column_name']:
                          if  c_column:
                              colunas.append(c_column.lower())
@@ -168,15 +179,12 @@ def exec_etl(p_cd_cliente):
                   except:
                      time.sleep(1)
                      ws_try-=1
-              con0.close()
-
-#         file = open('read.txt', 'w')
-#         file.write(str(blob_content))
-#         file.close()
+              con_destino.close()
 
          if  db_origem == 'FILE':
              colunas.remove('cd_empresa')
 
+         # Converte CSV do blob em dados do insert 
          dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",")
          if  tabela_criterio == 'SCHEDULER':
              dados.insert(loc=0, column='mes_agendamento', value=mes_agendamento)
@@ -185,15 +193,9 @@ def exec_etl(p_cd_cliente):
                  dados.insert(loc=0, column='cd_empresa', value=p_empresa_fix) 
          if  'cd_empresa' not in dados.columns:
              dados.insert(loc=0, column='cd_empresa', value=p_empresa_fix)
-#         all_columns = list(dados)
-#         dados[all_columns] = dados[all_columns].astype(str)
-#         df_obj = dados.select_dtypes(['object'])
-#         dados[df_obj.columns] = df_obj.apply(lambda x: x.str.strip())
-#         dados = dados.astype(object).where(pd.notnull(dados),None)
 
          data_local = datetime.today()
          ref_local = data_local.strftime('%Y-%m-%d %H:%M:%S')
-
          dados.insert(loc=0, column='codigo_empresa',      value=id_cliente)
          dados.insert(loc=0, column='dt_upquery_registro', value=ref_local)
 
@@ -207,13 +209,6 @@ def exec_etl(p_cd_cliente):
          object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
          dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
 
-#         object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-#         dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-#         dtyp = {c:sa.types.VARCHAR(500) for c in object_columns}
-#         dsn_destino = cx_Oracle.makedsn(cnx_host,port=cnx_port,service_name=cnx_service)
-#         destino = create_engine('oracle+cx_oracle://%s:%s@%s' % (cnx_user, cnx_pass, dsn_destino))
-
-
          dados = dados.astype(object).where(pd.notnull(dados),None)
          all_columns = list(dados)
          dados.applymap(lambda x: x.strip() if isinstance(x, str) else x)
@@ -221,9 +216,8 @@ def exec_etl(p_cd_cliente):
          object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
          dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
 
-         dsn_destino = cx_Oracle.makedsn(cnx_host,port=cnx_port,service_name=cnx_service)
-         destino = create_engine('oracle+cx_oracle://%s:%s@%s' % (cnx_user, cnx_pass, dsn_destino))
-
+         # Insere os dados e atualiza o status da TMP_DOCS 
+         status = 'OK'
          try:
              with destino.connect() as con_destino:
                   con_destino.execute('''alter session set NLS_DATE_FORMAT=\'YYYY-MM-DD HH24:MI:SS\'''')
@@ -234,8 +228,8 @@ def exec_etl(p_cd_cliente):
                        r_back = con0.execute("update TMP_DOCS SET status = 'END', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
          except Exception as e:
              exc_type, exc_obj, exc_tb = sys.exc_info()
+             status='ERRO'
              erros='Linha:['+str(exc_tb.tb_lineno)+'] '+str(e)[0:3000]
-#             erros='['+p_cd_cliente+'] - Erro: '+str(e)[0:3500]
              logger.error(erros)
              with engine.connect() as con0:
                   r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
@@ -244,13 +238,16 @@ def exec_etl(p_cd_cliente):
          cursor.callproc("lock_status", [p_cd_cliente,'I'])
          cursor.close()
          connection.commit()
+         logger.info('Finalizado ['+p_cd_cliente+'] - ['+tabela_transp+'] - ['+status+']')
+
+logger.info('Serviço Iniciado [UPQUERY_AGT - AGENTE]')
 
 ws_parado=0
 while True:
-#     time.sleep(3)
+
      if  len(threading.enumerate()) < 11:
          with engine.connect() as con0:
-              cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente not in ('000000113','000000096')",con=con0)
+              cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente not in ('000000113','000000096') and id_cliente in ('000000128','000000078','000000037') ",con=con0)
               con0.close
 
          for ind in range(0, len(cliente_status)):
