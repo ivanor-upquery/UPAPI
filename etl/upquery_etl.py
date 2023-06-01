@@ -178,8 +178,6 @@ def exec_client(cfg_cliente):
             try:
                 # --- Lê arquivo -----------------------------------------------------------
                 engine.fast_executemany = True
-                logger.info('a1')
-                logger.info(ws_arquivo[-3:].upper()) 
 
                 if get_type == "excel":
                     if ws_arquivo[-3:].upper() == 'XLS':
