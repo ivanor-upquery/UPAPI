@@ -155,7 +155,8 @@ def exec_client(cfg_cliente):
             engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
      
             with engine.connect() as con0:
-                 r_del = con0.execute(exec_clear)
+                 if exec_clear is not None:
+                    r_del = con0.execute(exec_clear)
                  dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                  r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
