@@ -165,22 +165,10 @@ def exec_client(cfg_cliente):
             # --- Pega os parametros do comando -----------------------------------------------------------
             if exec_comando is None:
                 raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.')
-            params     = exec_comando.split('|')
-            ws_com_cab = "S"
+            params = exec_comando.split('|')
             try:
-                if get_type == "txt":
-                    ws_arquivo   = (params[0]).strip()
-                    ws_separador = params[1]
-                    try:
-                        ws_com_cab = params[2]
-                    except Exception as e:
-                        ws_com_cab = "S"
-                if get_type == "excel":
-                    ws_arquivo = (params[0]).strip()
-                    try: 
-                        ws_com_cab = params[1]
-                    except Exception as e:                        
-                        ws_com_cab = "S"
+                ws_arquivo   = (params[0]).strip()
+                ws_separador = (params[1] if get_type == "txt" else "")
             except Exception as e:
                 raise Exception('Numero incorreto de parâmetros no comando ['+ str(e)[0:3500] + ']')
 
@@ -206,18 +194,6 @@ def exec_client(cfg_cliente):
                 if exec_clear is not None:
                     with engine.connect() as con0:
                          r_del = con0.execute(exec_clear)
-
-                # --- Monta as colunas da tabela a serem inseridas 
-                # if ws_com_cab == "S":
-                #                              dados.columns = dados.columns.str.strip().str.lower()
-                #              object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-                #              dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-                #              colunas = dados.columns
-                #              dados = dados.rename(columns=lambda x: x.split('.')[-1])
-                #              for index in range(len(tab_colunas)):
-                #                  if  tab_colunas[index] not in dados.columns:
-                #                      dados[tab_colunas[index]]=''
-                #              dados = dados[tab_colunas]
 
                 # --- Insere registros e atualiza status da fila -----------------------------------------------------------
                 with engine.connect() as con0:
