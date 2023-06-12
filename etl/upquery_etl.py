@@ -13,24 +13,21 @@ import cx_Oracle
 import time
 import base64
 import math
-
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from requests.structures import CaseInsensitiveDict
-
 import threading
 import datetime
 from datetime import datetime, timedelta
 from datetime import date
 from time import gmtime, strftime
-
 import configparser as ConfigParser
+import os
+import csv
 
-# >>>>
-# >>>> Formato Parametro <<<<
-# >>>>
-
-
+# -------------------------------------------------------------------------------------------
+# Formato Parametro 
+# -------------------------------------------------------------------------------------------
 def get_par(dados,parametro,defval):
     try:
         retorno = dados.loc[dados['cd_parametro'] == parametro]['conteudo'].values[0]
@@ -41,10 +38,78 @@ def get_par(dados,parametro,defval):
            retorno = defval
     return retorno
 
-# >>>>
-# >>>> função Operação <<<<
-# >>>>
+# -------------------------------------------------------------------------------------------
+#  função que importa arquivo enviado por FTP
+# -------------------------------------------------------------------------------------------
+def ftp_client_old(cfg_cliente):
 
+    try: 
+        id_client = cfg_cliente
+        fonte_host = config[section].get('host','localhost')
+        fonte_user = config[section].get('username','')
+        fonte_pass = config[section].get('password','')
+        fonte_serv = config[section].get('servicename','')
+        fonte_port = config[section].get('port','1521')
+        fonte_ftp  = config[section].get('ftp_path','')
+        
+        dsn  = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
+        con0 = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
+        cur0 = con0.cursor()
+        
+        prm_tabela    = "etl_webm_pagar"
+        prm_arquivo   = "conpagar.txt"
+        prm_separador = '\t'
+        ws_nm_find    = prm_arquivo.split('.')[0].replace('*','')
+        ws_linha      = 0
+                     
+        for file in os.listdir(fonte_ftp):
+            if file.find(ws_nm_find) >= 0: 
+                ws_arquivo = fonte_ftp+"/"+file
+                logger.info('FTP ['+id_client+']:' + ws_arquivo + " - INICIO")
+                file       = open(ws_arquivo, "r", encoding='ISO-8859-1') 
+                csv_reader = csv.reader(file, delimiter=prm_separador)
+                ws_linha   = 0
+
+                cur0.execute("delete " + prm_tabela)
+                for lines in csv_reader:
+                    ws_linha = ws_linha + 1
+                    cur0.execute("insert into "+prm_tabela+" values (:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13,:14,:15,:16,:17,:18,:19,:20,:21)",(lines[0],lines[1],lines[2],lines[3],lines[4],lines[5],lines[6],lines[7],lines[8],lines[9],lines[10],lines[11],lines[12],lines[13],lines[14],lines[15],lines[16],lines[17], lines[18], lines[19], lines[20])) 
+
+                con0.commit()
+                os.remove(ws_arquivo)
+                logger.info('FTP ['+id_client+']:' + ws_arquivo + " - FIM")
+
+        prm_tabela    = "etl_webm_receber"
+        prm_arquivo   = "conreceber.txt"
+        prm_separador = '\t'
+        ws_nm_find   = prm_arquivo.split('.')[0].replace('*','')
+        
+        for file in os.listdir(fonte_ftp):
+            if file.find(ws_nm_find) >= 0: 
+                ws_arquivo = fonte_ftp+"/"+file
+                logger.info('FTP ['+id_client+']:' + ws_arquivo + " - INICIO")
+                # file = open(ws_arquivo, "r") 
+                file       = open(ws_arquivo, "r", encoding='ISO-8859-1') 
+                csv_reader = csv.reader(file, delimiter=prm_separador)
+                
+                cur0.execute("delete " + prm_tabela)
+                for lines in csv_reader:
+                    cur0.execute("insert into "+prm_tabela+" values (:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13,:14,:15,:16,:17,:18,:19,:20,:21,:22,:23,:24,:25,:26,:27,:28,:29)",(lines[0],lines[1],lines[2],lines[3],lines[4],lines[5],lines[6],lines[7],lines[8],lines[9],lines[10],lines[11],lines[12],lines[13],lines[14],lines[15],lines[16],lines[17], lines[18], lines[19], lines[20],lines[21],lines[22],lines[23],lines[24],lines[25],lines[26],lines[27],lines[28])) 
+
+                con0.commit()
+                os.remove(ws_arquivo)
+                logger.info('FTP ['+id_client+']:' + ws_arquivo + " - FIM")
+
+        con0.commit()
+        con0.close()
+
+    except Exception as e:
+        erros='Erro FTP - linha('+str(ws_linha)+') : '+prm_tabela+' - '+str(e)[0:3500]
+        logger.error(erros)
+
+# -------------------------------------------------------------------------------------------
+#  função Operação 
+# -------------------------------------------------------------------------------------------
 def exec_client(cfg_cliente):
   try:
      id_client = cfg_cliente
@@ -701,6 +766,10 @@ while True:
               fonte_pass = config[section].get('password','')
               fonte_serv = config[section].get('servicename','')
               fonte_port = config[section].get('port','1521')
+              fonte_ftp  = config[section].get('ftp_path','N/A')
+              if fonte_ftp != "N/A":
+                 ftp_client_old(section)
+
               dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
               engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
               try:
