@@ -38,99 +38,75 @@ def get_par(dados,parametro,defval):
            retorno = defval
     return retorno
 
+# -------------------------------------------------------------------------------------------
+# Extrai os parametros dos comandos das acoes 
+# -------------------------------------------------------------------------------------------
 def get_comando(conexao, comando, parametro):
+    if comando is None:
+       raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.') 
+    retorno = ''
     try:
-        param = comando.split('|')
-        if conexao.lower() == 'txt':
+        param   = str(comando).split('|')
+        if conexao.lower() == 'txt':              # TXT 
             if parametro == 'ARQUIVO':
                 retorno = param[0]
             if parametro == 'SEPARADOR':
                 retorno = param[1]
+        if conexao.lower() == 'excel':              # EXCEL  
+            if parametro == 'ARQUIVO':
+                retorno = param[0]
 
-    except Exception as e:            
-        raise Exception('Erro obtendo parametros do comando ['+ str(e)[0:3500] + ']')        
+    except Exception as e:
+        erros='Erro obtendo parametro do comando '+str(e)[0:3500]
+        raise Exception(erros) 
+    
+    return retorno            
 
-    return retorno
+    
 
 # -------------------------------------------------------------------------------------------
 #  função que importa arquivo enviado por FTP
 # -------------------------------------------------------------------------------------------
 def ftp_client(cfg_cliente):
 
+    id_client = cfg_cliente
+    fonte_host = config[section].get('host','localhost')
+    fonte_user = config[section].get('username','')
+    fonte_pass = config[section].get('password','')
+    fonte_serv = config[section].get('servicename','')
+    fonte_port = config[section].get('port','1521')
+    fonte_ftp  = config[section].get('ftp_path','')
+    
     try: 
-        id_client = cfg_cliente
-        fonte_host = config[section].get('host','localhost')
-        fonte_user = config[section].get('username','')
-        fonte_pass = config[section].get('password','')
-        fonte_serv = config[section].get('servicename','')
-        fonte_port = config[section].get('port','1521')
-        fonte_ftp  = config[section].get('ftp_path','')
-        
-        logger.info('a1')        
         dsn  = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
         con0 = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
         cur0 = con0.cursor()
-        logger.info('a1.1')                
-        
-        cur0.execute("select con.conteudo as db, step.id_conexao, step.tbl_destino, step.comando, step.comando_limpar from etl_conexoes con, etl_step step where step.id_conexao  = con.id_conexao and con.cd_parametro = 'DB' and con.conteudo  in ('TXT','EXCEL')") 
-        logger.info('a1.2')                
-        
+        cur1 = con0.cursor()
+       
+        cur0.execute("select step.step_id, con.conteudo, step.comando from etl_conexoes con, etl_step step where step.id_conexao = con.id_conexao and con.cd_parametro = 'DB' and step.tipo_comando = 'INTEGRADOR_FTP'") 
         steps = cur0.fetchall()
-
-        logger.info('a2')
         for step in steps:
+            try: 
+                ws_step_id = step[0] 
+                ws_arquivo = get_comando(step[1], step[2], 'ARQUIVO') 
+                ws_nm_find = ws_arquivo.split('.')[0].replace('*','')
+                if ws_arquivo == "": 
+                    raise Exception('Parametro nao contem o nome do arquivo')
+                for file in os.listdir(fonte_ftp):
+                    if file.find(ws_nm_find) >= 0: 
+                        cur1.callproc('etf.etl_fila_new',[ws_step_id])
+                        cur1.close()
+                        logger.info('FTP - Criado fila arquivo: ' + fonte_ftp+'/'+file)
 
-            logger.info('a3')
-            prm_tabela    = step['tbl_destino'] 
-            prm_arquivo   = get_comando(step['db'], step['comando'], 'ARQUIVO') 
-            ws_nm_find    = prm_arquivo.split('.')[0].replace('*','')
+            except Exception as e:
+                erros='FTP - Erro cliente/acao ['+id_client+'/'+ws_step_id+']: '+str(e)[0:3500]
+                logger.error(erros)
 
-            logger.info(prm_arquivo)
-            logger.info(ws_nm_find)
-                     
-        #for file in os.listdir(fonte_ftp):
-        #    if file.find(ws_nm_find) >= 0: 
-        #        ws_arquivo = fonte_ftp+"/"+file
-        #        logger.info('FTP ['+id_client+']:' + ws_arquivo + " - INICIO")
-        #        file       = open(ws_arquivo, "r", encoding='ISO-8859-1') 
-        #        csv_reader = csv.reader(file, delimiter=prm_separador)
-        #        ws_linha   = 0
-
-        #        cur0.execute("delete " + prm_tabela)
-        #        for lines in csv_reader:
-        #            ws_linha = ws_linha + 1
-        #            cur0.execute("insert into "+prm_tabela+" values (:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13,:14,:15,:16,:17,:18,:19,:20,:21)",(lines[0],lines[1],lines[2],lines[3],lines[4],lines[5],lines[6],lines[7],lines[8],lines[9],lines[10],lines[11],lines[12],lines[13],lines[14],lines[15],lines[16],lines[17], lines[18], lines[19], lines[20])) 
-
-        #        con0.commit()
-        #        os.remove(ws_arquivo)
-        #        logger.info('FTP ['+id_client+']:' + ws_arquivo + " - FIM")
-
-        #prm_tabela    = "etl_webm_receber"
-        #prm_arquivo   = "conreceber.txt"
-        #prm_separador = '\t'
-        #ws_nm_find   = prm_arquivo.split('.')[0].replace('*','')
-        #
-        #for file in os.listdir(fonte_ftp):
-        #    if file.find(ws_nm_find) >= 0: 
-        #        ws_arquivo = fonte_ftp+"/"+file
-        #        logger.info('FTP ['+id_client+']:' + ws_arquivo + " - INICIO")
-        #        # file = open(ws_arquivo, "r") 
-        #        file       = open(ws_arquivo, "r", encoding='ISO-8859-1') 
-        #        csv_reader = csv.reader(file, delimiter=prm_separador)
-        #        
-        #        cur0.execute("delete " + prm_tabela)
-        #        for lines in csv_reader:
-        #            cur0.execute("insert into "+prm_tabela+" values (:1,:2,:3,:4,:5,:6,:7,:8,:9,:10,:11,:12,:13,:14,:15,:16,:17,:18,:19,:20,:21,:22,:23,:24,:25,:26,:27,:28,:29)",(lines[0],lines[1],lines[2],lines[3],lines[4],lines[5],lines[6],lines[7],lines[8],lines[9],lines[10],lines[11],lines[12],lines[13],lines[14],lines[15],lines[16],lines[17], lines[18], lines[19], lines[20],lines[21],lines[22],lines[23],lines[24],lines[25],lines[26],lines[27],lines[28])) 
-
-        #        con0.commit()
-        #        os.remove(ws_arquivo)
-        #        logger.info('FTP ['+id_client+']:' + ws_arquivo + " - FIM")
-
-        #con0.commit()
-        #con0.close()
+        cur0.close()
+        con0.close()
 
     except Exception as e:
-        erros='Erro FTP - linha('+str(ws_linha)+') : '+prm_tabela+' - '+str(e)[0:3500]
+        erros='FTP - Erro cliente ['+id_client+']: '+str(e)[0:3500]
         logger.error(erros)
 
 
@@ -370,6 +346,9 @@ def exec_client(cfg_cliente):
                      dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                      r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
                 
+                # os.rename(cnx_loc_file+ws_arquivo, cnx_loc_file+"bkp/"+ws_arquivo)
+                os.remove(cnx_loc_file+ws_arquivo)
+
             except Exception as e:
                 erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 logger.error(erros)
