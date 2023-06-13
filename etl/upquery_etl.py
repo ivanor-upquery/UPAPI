@@ -52,6 +52,7 @@ def get_comando(conexao, comando, parametro):
                 retorno = param[0]
             if parametro == 'SEPARADOR':
                 retorno = param[1]
+
         if conexao.lower() == 'excel':              # EXCEL  
             if parametro == 'ARQUIVO':
                 retorno = param[0]
@@ -59,7 +60,10 @@ def get_comando(conexao, comando, parametro):
     except Exception as e:
         erros='Erro obtendo parametro do comando '+str(e)[0:3500]
         raise Exception(erros) 
-    
+
+    if retorno == '':
+        raise Exception('Nao localizado conteudo para o parametro de comando '+ parametro) 
+
     return retorno            
 
     
@@ -298,6 +302,59 @@ def exec_client(cfg_cliente):
                  r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
         if  get_type == "excel" or get_type == "txt":
+
+            # --- Pega os parametros do comando -----------------------------------------------------------
+            ws_arquivo   = get_comando(get_type, exec_comando, 'ARQUIVO')
+            ws_separador = ""
+            if get_type == "txt":
+                ws_separador = get_comando(get_type, exec_comando, 'SEPARADOR')
+            if ws_arquivo.find("'") != -1:
+                raise Exception('Nome do arquivo nao pode conter ASPAS.')
+
+            try:
+                # --- Lê arquivo -----------------------------------------------------------
+                engine.fast_executemany = True
+
+                if get_type == "excel":
+                    if ws_arquivo[-3:].upper() == 'XLS':
+                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='xlrd')
+                    else:     
+                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='openpyxl')
+                else:
+                    dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador)
+
+                object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+                dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
+                
+                # --- Monta as colunas da tabela a serem inseridas 
+                
+                dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
+                for index in range(len(tab_colunas)):
+                    if  tab_colunas[index] not in dados.columns:
+                        dados[tab_colunas[index]]=''
+                dados = dados[tab_colunas]
+
+                # --- Exclui registros -----------------------------------------------------------
+                if exec_clear is not None:
+                    with engine.connect() as con0:
+                         r_del = con0.execute(exec_clear)
+
+                # --- Insere registros e atualiza status da fila -----------------------------------------------------------
+                with engine.connect() as con0:
+                     dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+                
+                # os.rename(cnx_loc_file+ws_arquivo, cnx_loc_file+"bkp/"+ws_arquivo)
+                os.remove(cnx_loc_file+ws_arquivo)
+
+            except Exception as e:
+                erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
+                logger.error(erros)
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
+
+
+        if  get_type == "excel_OLD" or get_type == "txt_OLD":
 
             # --- Pega os parametros do comando -----------------------------------------------------------
             if exec_comando is None:
