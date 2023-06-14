@@ -24,6 +24,7 @@ from time import gmtime, strftime
 import configparser as ConfigParser
 import os
 import csv
+import fnmatch
 
 # -------------------------------------------------------------------------------------------
 # Formato Parametro 
@@ -37,36 +38,7 @@ def get_par(dados,parametro,defval):
         else:
            retorno = defval
     return retorno
-
-# -------------------------------------------------------------------------------------------
-# Extrai os parametros dos comandos das acoes 
-# -------------------------------------------------------------------------------------------
-def get_comando(conexao, comando, parametro):
-    if comando is None:
-       raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.') 
-    retorno = ''
-    try:
-        param   = str(comando).split('|')
-        if conexao.lower() == 'txt':              # TXT 
-            if parametro == 'ARQUIVO':
-                retorno = param[0]
-            if parametro == 'SEPARADOR':
-                retorno = param[1]
-
-        if conexao.lower() == 'excel':              # EXCEL  
-            if parametro == 'ARQUIVO':
-                retorno = param[0]
-
-    except Exception as e:
-        erros='Erro obtendo parametro do comando '+str(e)[0:3500]
-        raise Exception(erros) 
-
-    if retorno == '':
-        raise Exception('Nao localizado conteudo para o parametro de comando '+ parametro) 
-
-    return retorno            
-
-    
+  
 
 # -------------------------------------------------------------------------------------------
 #  função que importa arquivo enviado por FTP
@@ -91,15 +63,12 @@ def ftp_client(cfg_cliente):
         steps = cur0.fetchall()
         for step in steps:
             try: 
-                ws_step_id = step[0] 
-                ws_arquivo = get_comando(step[1], step[2], 'ARQUIVO') 
-                ws_nm_find = ws_arquivo.split('.')[0].replace('*','')
-                if ws_arquivo == "": 
-                    raise Exception('Parametro nao contem o nome do arquivo')
-                for file in os.listdir(fonte_ftp):
-                    if file.find(ws_nm_find) >= 0: 
-                        cur1.callproc('etf.etl_fila_new',[ws_step_id])
-                        cur1.close()
+                ws_step_id  = step[0] 
+                ws_arquivo  = str(step[2]).split('|')[0]   # Nome do arquivo 
+                for file in fnmatch.filter(os.listdir(fonte_ftp),ws_arquivo):
+                    cnt=pd.read_sql_query("select count(*) as CNT from ETL_FILA where status='A' and run_id=:1 ",con=con0,params=[ws_step_id])
+                    if cnt['CNT'].values[0] == 0:
+                        cur1.callproc('etf.ftp_etl_fila_new',[ws_step_id, file])
                         logger.info('FTP - Criado fila arquivo: ' + fonte_ftp+'/'+file)
 
             except Exception as e:
@@ -228,6 +197,7 @@ def exec_client(cfg_cliente):
 
      logger.info('Inicio: '+id_uniq)
 
+     # Busca parametros da conexão 
      with engine.connect() as con0:
           data_con      = pd.read_sql_query('select * from ETL_CONEXOES where id_conexao = :1',con=con0,params=parbuf)
           cnx_driver    = get_par(data_con,'DRIVER','')
@@ -255,6 +225,7 @@ def exec_client(cfg_cliente):
 
      logger.info('Inicio: '+id_uniq+' Conn/Database: '+id_conexao+'/'+cnx_dbase)
 
+     # Busca colunas da tabela de destino 
      with engine.connect() as con0:
           temp_col = pd.read_sql_query('select column_name from all_tab_columns where table_name='+chr(39)+tbl_destino.upper()+chr(39)+' order by column_id',con=con0)
           temp_col['column_name'] = temp_col['column_name'].astype(str)
@@ -301,60 +272,82 @@ def exec_client(cfg_cliente):
                  dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                  r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
-        if  get_type == "excel" or get_type == "txt":
+        # Busca parametros do comando de integracao 
+        if  get_type != "db_con": 
+            con0 = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
+            cur0 = con0.cursor()
+            ws_parametros = cur0.var(str)
+            ws_conteudos  = cur0.var(str)
+            cur0.execute ('begin etf.ftp_get_comando_param(:1,:2,:3,:4); end;', [cnx_db, exec_comando, ws_parametros, ws_conteudos])
+            con0.close()
+            par_comando = pd.Series(ws_conteudos.getvalue().split('|'), index=ws_parametros.getvalue().split('|')) 
 
-            # --- Pega os parametros do comando -----------------------------------------------------------
-            ws_arquivo   = get_comando(get_type, exec_comando, 'ARQUIVO')
+        if  get_type == "excel_NEW" or get_type == "txt_NEW":
+
+            ws_arquivo   = par_comando['FILE_NAME']
+            ws_row_par   = int(par_comando['ROW_PAR'])
+            ws_row_cab   = int(par_comando['ROW_CAB'])
+            ws_row_ini   = int(par_comando['ROW_INI'])
             ws_separador = ""
             if get_type == "txt":
-                ws_separador = get_comando(get_type, exec_comando, 'SEPARADOR')
+                ws_separador = par_comando['SEPARATOR']
+
             if ws_arquivo.find("'") != -1:
                 raise Exception('Nome do arquivo nao pode conter ASPAS.')
 
             try:
-                # --- Lê arquivo -----------------------------------------------------------
-                engine.fast_executemany = True
-
+                # -- Lê arquivo -----------------------------------------------------------
                 if get_type == "excel":
                     if ws_arquivo[-3:].upper() == 'XLS':
-                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='xlrd')
+                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='xlrd', header=None)
                     else:     
-                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='openpyxl')
+                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='openpyxl', header=None)
                 else:
-                    dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador)
+                    dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador, header=None)
 
-                object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-                dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
+                # -- Monta o cabeçalho pegando do próprio arquivo ou da tabela de destino ----------------------------------------------------------- 
+                if ws_row_cab > 0:
+                    try:
+                        dados.columns = dados.loc[ws_row_cab-1].str.strip().str.lower().str.replace(".","_")
+                        dados.columns
+                        for index in range(len(tab_colunas)):
+                            if  tab_colunas[index] not in dados.columns:
+                                dados[tab_colunas[index]]=''
+                        dados = dados[tab_colunas]
+                    except Exception as e:
+                        raise Exception('Erro pegando cabeçalho do arquivo, verifique se o arquivo realmente possui cabeçalho no conteúdo.'+str(e)[0:3000])   
+                else: 
+                    try:
+                        dados.columns = tab_colunas
+                    except Exception as e:
+                        raise Exception('Erro pegando cabeçalho a partir da tabela de destino, quantidade de colunas do arquivo difere das colunas da tabela.'+str(e)[0:3000])   
                 
-                # --- Monta as colunas da tabela a serem inseridas 
-                
-                dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
-                for index in range(len(tab_colunas)):
-                    if  tab_colunas[index] not in dados.columns:
-                        dados[tab_colunas[index]]=''
-                dados = dados[tab_colunas]
+                # -- Exclui as linhas a serem ignoradas -----------------------------------------------------------
+                if ws_row_ini > 1:
+                    for i in range(0, ws_row_ini-1):
+                        dados.drop(i, axis='rows', inplace = True)
 
-                # --- Exclui registros -----------------------------------------------------------
+                # -- Exclui registros -----------------------------------------------------------
                 if exec_clear is not None:
                     with engine.connect() as con0:
                          r_del = con0.execute(exec_clear)
 
-                # --- Insere registros e atualiza status da fila -----------------------------------------------------------
+                # -- Insere registros e atualiza status da fila -----------------------------------------------------------
                 with engine.connect() as con0:
-                     dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                     dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000) # ,  dtype=dtyp)
                      r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
                 
-                # os.rename(cnx_loc_file+ws_arquivo, cnx_loc_file+"bkp/"+ws_arquivo)
                 os.remove(cnx_loc_file+ws_arquivo)
 
             except Exception as e:
+                os.remove(cnx_loc_file+ws_arquivo)
                 erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 logger.error(erros)
                 with engine.connect() as con0:
                      r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
 
-        if  get_type == "excel_OLD" or get_type == "txt_OLD":
+        if  get_type == "excel" or get_type == "txt":
 
             # --- Pega os parametros do comando -----------------------------------------------------------
             if exec_comando is None:
@@ -900,7 +893,6 @@ while True:
               fonte_port = config[section].get('port','1521')
               fonte_ftp  = config[section].get('ftp_path','N/A')
               if fonte_ftp != "N/A":
-                 #ftp_client_old(section)
                  ftp_client(section)
 
               dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
