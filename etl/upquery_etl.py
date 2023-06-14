@@ -309,11 +309,6 @@ def exec_client(cfg_cliente):
                 if ws_row_cab > 0:
                     try:
                         dados.columns = dados.loc[ws_row_cab-1].str.strip().str.lower().str.replace(".","_")
-                        dados.columns
-                        for index in range(len(tab_colunas)):
-                            if  tab_colunas[index] not in dados.columns:
-                                dados[tab_colunas[index]]=''
-                        dados = dados[tab_colunas]
                     except Exception as e:
                         raise Exception('Erro pegando cabeçalho do arquivo, verifique se o arquivo realmente possui cabeçalho no conteúdo.'+str(e)[0:3000])   
                 else: 
@@ -321,13 +316,31 @@ def exec_client(cfg_cliente):
                         dados.columns = tab_colunas
                     except Exception as e:
                         raise Exception('Erro pegando cabeçalho a partir da tabela de destino, quantidade de colunas do arquivo difere das colunas da tabela.'+str(e)[0:3000])   
-                
+
+                # -- Substitui os parametros do comando limpeza da tabela de destino, se existir parametros  ----------------------------------------------------------- 
+                if ws_row_par > 0:
+                    try:
+                        param_arq = pd.Series(dados.loc[ws_row_par-1])
+                    except Exception as e:
+                        raise Exception('Erro pegando parametros do arquivo, verifique se o arquivo realmente possui parâmetros no conteúdo.'+str(e)[0:3000])   
+
+                    for index in range(len(dados.columns)):
+                        print(dados.columns[index]) 
+                        print(param_arq[dados.columns[index]])
+                        exec_clear = exec_clear.upper().replace(":"+str(dados.columns[index].upper()), "'" + str(param_arq[dados.columns[index]])+ "'" )
+
+                # -- Exclui colunas que não existem na tabela de destino 
+                for index in range(len(tab_colunas)):
+                    if  tab_colunas[index] not in dados.columns:
+                        dados[tab_colunas[index]]=''
+                dados = dados[tab_colunas]
+
                 # -- Exclui as linhas a serem ignoradas -----------------------------------------------------------
                 if ws_row_ini > 1:
                     for i in range(0, ws_row_ini-1):
                         dados.drop(i, axis='rows', inplace = True)
 
-                # -- Exclui registros -----------------------------------------------------------
+                # -- Exclui registros da tabela de destino -----------------------------------------------------------
                 if exec_clear is not None:
                     with engine.connect() as con0:
                          r_del = con0.execute(exec_clear)

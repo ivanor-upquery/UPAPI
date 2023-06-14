@@ -18,22 +18,35 @@ import fnmatch
 import glob
 import fnmatch
 
-a2 = "aa|bbb|111"
-a3 = "X1|X2|X3"
-dados = pd.Series(a2.split('|'), index=a3.split('|')) 
-print(dados)
-
-print(dados['X1']) 
-      
-
-          
-
+#a2 = "aa|bbb|111"
+#a3 = "X1|X2|X3"
+#dados = pd.Series(a2.split('|'), index=a3.split('|')) 
+#print(dados)
+#print(dados['X1']) 
 
 #files=fnmatch.filter(os.listdir('/opt/oracle/upapi/testes'), '')
 #print(files)
 
+ws_arquivo   = '/opt/oracle/upapi/testes/arquivo_teste3.xlsx'
+dados = pd.read_excel(ws_arquivo, engine='openpyxl', header=None)
 
-##   ws_arquivo   = '/opt/oracle/upapi/testes/arquivo_teste.csv'
+dados.columns = dados.loc[2].str.strip().str.lower().str.replace(".","_")
+
+exec_delete = 'select aaa, bbbb from xxx where aaa = :cod1 and bbb = :COD2' 
+param_arq = pd.Series(dados.loc[3])
+
+for index in range(len(dados.columns)):
+    print(dados.columns[index]) 
+    print(param_arq[dados.columns[index]])
+    exec_delete = exec_delete.upper().replace(":"+str(dados.columns[index].upper()), "'" + str(param_arq[dados.columns[index]])+ "'" )
+
+#exec_delete.replace('aaa', 'CCcccC')
+
+print(exec_delete)
+
+#print(exec_delete.replace('aaa', 'CCcccC'))
+
+
 ##   ws_separador = ';'
 ##   ws_row_ini   = 2
 ##   ws_row_cab   = 1
