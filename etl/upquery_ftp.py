@@ -16,23 +16,20 @@ import configparser as ConfigParser
 import os
 import fnmatch
 import copy
+import etl_copel 
 
 # -------------------------------------------------------------------------------------------
-#  função que importa arquivo enviado por FTP
+# Formato Parametro 
 # -------------------------------------------------------------------------------------------
-def ftp_teste(engine):
-    logger.info('a1')
-    # con0 = engine.raw_connection()    
-    #con0 = engine.connection()    
-    # cur0 = con0.cursor()
-    with engine.connection() as con0:
-        data_cnt=pd.read_sql_query("select count(*) as cnt from ETL_FILA where status='A'",con=con0)
-        count_exec=data_cnt['cnt'].values[0]
-        con0.close  
-
-    logger.info('a2')
-    logger.info(count_exec)
-
+def get_par(dados,parametro,defval):
+    try:
+        retorno = dados.loc[dados['cd_parametro'] == parametro]['conteudo'].values[0]
+    except:
+        if defval is None:
+           retorno = ''
+        else:
+           retorno = defval
+    return retorno
 
 # -------------------------------------------------------------------------------------------
 #  função que importa arquivo enviado por FTP
@@ -69,17 +66,74 @@ def ftp_client():
 # -------------------------------------------------------------------------------------------
 def exec_client(id_uniq, session, engine, dsn):
 
-    id_uniq = copy.copy(id_uniq)  
-    section = copy.deepcopy(section)
-    engine  = copy.deepcopy(engine)
-    dsn     = copy.deepcopy(dsn)
+    # id_uniq = copy.copy(id_uniq)  
+    # session = copy.deepcopy(session)
+    # engine  = copy.deepcopy(engine)
+    # dsn     = copy.deepcopy(dsn)
 
-    id_client = section
-    fonte_user = config[section].get('username','')
-    fonte_pass = config[section].get('password','')
+    id_client = session
+    fonte_user = config[session].get('username','')
+    fonte_pass = config[session].get('password','')
 
     logger.info('a1')
-    logger.info(fonte_host)
+
+    # Busca dados da fila e da conexão 
+    with engine.connect() as con0:
+        data_exec    = pd.read_sql_query("select id_uniq, tbl_destino, comando, comando_limpar, id_conexao from etl_fila where id_uniq=:1 and status='A'",con=con0, params=[id_uniq])
+        if len(data_exec) < 1:
+            return
+        id_conexao   = data_exec['id_conexao'].values[0]
+        exec_comando = data_exec['comando'].values[0]
+        data_con      = pd.read_sql_query('select * from ETL_CONEXOES where id_conexao = :1',con=con0,params=[id_conexao])
+        con0.close() 
+
+    cnx_db        = get_par(data_con,'DB','')
+    cnx_loc_file  = get_par(data_con,'LOC_FILE','')
+    cnx_usuario   = get_par(data_con,'USUARIO','')
+    cnx_senha     = get_par(data_con,'SENHA','')
+    
+    logger.info('a2')
+    logger.info(data_con)
+    tipo_integracao = cnx_db.lower()
+
+    con0 = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
+    cur0 = con0.cursor()
+    ws_parametros = cur0.var(str)
+    ws_conteudos  = cur0.var(str)
+    cur0.execute ('begin etf.ftp_get_comando_param(:1,:2,:3,:4); end;', [cnx_db, exec_comando, ws_parametros, ws_conteudos])
+    con0.close()
+    par_comando = pd.Series(ws_conteudos.getvalue().split('|'), index=ws_parametros.getvalue().split('|')) 
+    
+
+    try:
+
+        logger.info('INICIO - Cliente ['+id_uniq+'] Conexao ['+cnx_db+']')
+        with engine.connect() as con0:
+            r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='R' where id_uniq=:1",id_uniq)
+
+        if tipo_integracao == 'copel':
+            arquivo = par_comando['FILE_NAME']
+            dt_i    = par_comando['DT_INICIAL']
+            dt_f    = par_comando['DT_FINAL']
+
+            logger.info('a1')
+            logger.info(arquivo)
+            logger.info(dt_i)
+            logger.info(dt_f)
+
+            etl_copel.f_copel(cnx_usuario, cnx_senha, cnx_loc_file, arquivo, dt_i, dt_f)
+            if os.path.isfile(cnx_loc_file+'/'+arquivo):
+                logger.info('Download OK - Cliente ['+id_uniq+'] Conexao ['+cnx_db+']')
+            else: 
+                logger.info('Download ERRO - Cliente ['+id_uniq+'] Conexao ['+cnx_db+'] - Arquivo não gerado')
+
+        logger.info('FIM    - Cliente ['+id_uniq+'] Conexao ['+cnx_db+']')
+
+    except Exception as e:
+        erros=str(e)[0:3000]
+        logger.error(erros)
+        with engine.connect() as con0:
+            r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
 
 
@@ -124,7 +178,7 @@ while True:
                 id_uniq    = ""
                 
                 with engine.connect() as con0:
-                    data_exec=pd.read_sql_query("select* from (select f.ID_UNIQ, c.conteudo from ETL_CONEXOES C, ETL_FILA F where c.id_conexao = f.id_conexao and c.cd_parametro = 'DB' and f.status='A' order by f.dt_criacao) where rownum=1",con=con0)
+                    data_exec=pd.read_sql_query("select* from (select f.id_uniq, c.conteudo from etl_conexoes c, etl_fila f where c.id_conexao = f.id_conexao and c.cd_parametro = 'DB' and f.status='A' order by f.dt_criacao) where rownum=1",con=con0)
                     if  len(data_exec) >= 1:
                         count_exec = 1
                         id_uniq = data_exec['id_uniq'].values[0]
@@ -134,12 +188,8 @@ while True:
                 if  cnx_db not in drivers:    # Cancela se o tipo de driver não faz parte desse processo de FTP 
                     count_exec = 0
 
-                logger.info('a1')
-                logger.info(cnx_db)
-                logger.info(count_exec) 
-                   
                 if  count_exec != 0 and len(threading.enumerate()) < 11 and section not in threading.enumerate():
-                    exec_thr = threading.Thread(target=exec_client, args=(id_uniq, section, engine, dsn))
+                    exec_thr = threading.Thread(target=exec_client, name=section, args=(id_uniq, section, engine, dsn))
                     exec_thr.setDaemon(True)
                     exec_thr.start()
             except SQLAlchemyError as err:
