@@ -59,7 +59,6 @@ def import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_c
     
     nm_arquivo = cnx_loc_file + nm_arquivo
 
-    logger.info('x1')
     # -- Lê arquivo -----------------------------------------------------------
     if get_type == "excel":
         if nm_arquivo[-3:].upper() == 'XLS':
@@ -69,22 +68,6 @@ def import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_c
     else:
         dados = pd.read_csv(nm_arquivo, sep=cd_separador, header=None, encoding = "ISO-8859-1", low_memory=False, error_bad_lines=False)
 
-    # -- Monta o cabeçalho pegando do próprio arquivo ou da tabela de destino ----------------------------------------------------------- 
-    if nr_row_cab > 0:
-        try:
-            dados.columns = dados.loc[nr_row_cab-1].str.strip().str.lower().str.replace(".","_")
-        except Exception as e:
-            raise Exception('Erro pegando cabeçalho do arquivo, verifique se o arquivo realmente possui cabeçalho no conteúdo.'+str(e)[0:3000])   
-    else: 
-        if cnx_db == 'copel':
-            dados.drop(dados.columns[23], axis=1, inplace=True)
-            dados.columns = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura']
-        else:
-            try:
-                dados.columns = tab_colunas
-            except Exception as e:
-                raise Exception('Erro pegando cabeçalho a partir da tabela de destino, quantidade de colunas do arquivo difere das colunas da tabela.'+str(e)[0:3000])   
-    
     # -- Substitui os parametros do comando limpeza da tabela de destino, se existir parametros  ----------------------------------------------------------- 
     if nr_row_par > 0:
         try:
@@ -96,7 +79,23 @@ def import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_c
             print(dados.columns[index]) 
             print(param_arq[dados.columns[index]])
             exec_clear = exec_clear.upper().replace(":"+str(dados.columns[index].upper()), "'" + str(param_arq[dados.columns[index]])+ "'" )
-    
+
+    # -- Monta o cabeçalho pegando do próprio arquivo ou da tabela de destino ----------------------------------------------------------- 
+    if nr_row_cab > 0:
+        try:
+            dados.columns = dados.loc[nr_row_cab-1].str.strip().str.lower().str.replace(".","_")
+        except Exception as e:
+            raise Exception('Erro pegando cabeçalho do arquivo, verifique se o arquivo realmente possui cabeçalho no conteúdo.'+str(e)[0:3000])   
+    else: 
+        if cnx_db == 'COPEL':
+            dados.drop(dados.columns[23], axis=1, inplace=True)
+            dados.columns = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura']
+        else:
+            try:
+                dados.columns = tab_colunas
+            except Exception as e:
+                raise Exception('Erro pegando cabeçalho a partir da tabela de destino, quantidade de colunas do arquivo difere das colunas da tabela.'+str(e)[0:3000])   
+
     # -- Exclui colunas que não existem na tabela de destino 
     for index in range(len(tab_colunas)):
         if  tab_colunas[index] not in dados.columns:
@@ -118,12 +117,16 @@ def import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_c
     dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
 
     # -- Insere registros e atualiza status da fila -----------------------------------------------------------
-    with engine.connect() as con0:
-        dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000) # ,  dtype=dtyp)
-        r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+    try:
+        with engine.connect() as con0:
+            dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+            r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+    except Exception as e:
+        exc_tb = sys.exc_info()
+        erros='Linha:['+str(exc_tb.tb_lineno)+'] '+str(e)[0:3000]
+        print(erros)
+        raise Exception(erros)   
 
-    con0.close()
-    logger.info('x5')            
 
 # -------------------------------------------------------------------------------------------
 #  função que importa arquivo enviado por FTP
@@ -381,11 +384,13 @@ def exec_client(cfg_cliente):
                 except Exception as e:
                     raise Exception('Erro gerando arquivo:'+str(e)[0:3500])                                       
 
+                logger.info('COPEL - inserindo...')
                 try: 
-                    import_file(engine, id_client, 'txt', get_type, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
+                    import_file(engine, id_client, 'txt', cnx_db, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
                 except Exception as e:
                     os.remove(cnx_loc_file+nm_arquivo)
                     raise Exception('Erro importando arquivo:'+str(e)[0:3500])
+                logger.info('COPEL - Concluido')
 
             except Exception as e:
                 raise Exception('Erro '+ get_type.upper()+ ': '+str(e)[0:3500])   
@@ -394,7 +399,7 @@ def exec_client(cfg_cliente):
         if  get_type == "excel_new" or get_type == "txt_new":
             nm_arquivo   = par_comando['FILE_NAME']
             try: 
-                import_file(engine, id_client, get_type, get_type, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
+                import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
                 os.remove(cnx_loc_file+nm_arquivo)
             except Exception as e:
                 os.remove(cnx_loc_file+nm_arquivo)

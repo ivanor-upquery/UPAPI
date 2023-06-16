@@ -63,7 +63,7 @@ def f_download(cd_local, x_data_i, x_data_f):
             object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
             dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
             with engine.connect() as con0:
-                 dados.to_sql(name='vm_etl_transfer_teste', con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                 dados.to_sql(name='vm_etl_transfer', con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             erros='Linha:['+str(exc_tb.tb_lineno)+'] '+str(e)[0:3000]
