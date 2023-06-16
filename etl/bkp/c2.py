@@ -80,7 +80,7 @@ def f_download(cd_local, x_mes_ref, x_data_i, x_data_f, driver,colunas,engine):
 
         print('Linhas...: '+str(len(dados)))
         with engine.connect() as con0:
-             dados.to_sql(name='vm_etl_transfer', con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+             dados.to_sql(name='vm_etl_transfer_teste', con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
 
 #    driver.get_screenshot_as_file('/tmp/teste2.png')
  except Exception as e:

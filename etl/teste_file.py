@@ -18,6 +18,22 @@ import fnmatch
 import glob
 import fnmatch
 
+import datetime as dt
+import calendar
+
+p_ano_mes = '202306'
+
+ano = p_ano_mes[0:4]
+mes = p_ano_mes[-2:]
+print(ano)
+print(mes)
+date = dt.date(int(ano), int(mes), 1)
+p_mes_ref = date.strftime('%m/%Y')
+p_data_i  = date.replace(day = 1).strftime('%d/%m/%Y')
+p_data_f  = date.replace(day = calendar.monthrange(date.year, date.month)[1]).strftime('%d/%m/%Y')
+
+print('Atenção: '+p_mes_ref+' - '+p_data_i+' - '+p_data_f)
+
 #a2 = "aa|bbb|111"
 #a3 = "X1|X2|X3"
 #dados = pd.Series(a2.split('|'), index=a3.split('|')) 
@@ -27,8 +43,8 @@ import fnmatch
 #files=fnmatch.filter(os.listdir('/opt/oracle/upapi/testes'), '')
 #print(files)
 
-nm_arquivo   = '/opt/oracle/upapi/testes/relatorio_dados_controle_empreiteiras.csv'
-dados = pd.read_csv(nm_arquivo, sep=";", header=None, low_memory=False, error_bad_lines=False)
+#nm_arquivo   = '/opt/oracle/upapi/testes/relatorio_dados_controle_empreiteiras.csv'
+#dados = pd.read_csv(nm_arquivo, sep=";", header=None, low_memory=False, error_bad_lines=False)
 
 #dados = pd.read_excel(ws_arquivo, engine='openpyxl', header=None)
 #dados.columns = dados.loc[2].str.strip().str.lower().str.replace(".","_")

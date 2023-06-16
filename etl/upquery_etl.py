@@ -26,6 +26,7 @@ import os
 import csv
 import fnmatch
 import etl_copel 
+import etl_celesc
 
 # -------------------------------------------------------------------------------------------
 # Formato Parametro 
@@ -362,7 +363,7 @@ def exec_client(cfg_cliente):
 
         # Busca parametros do comando de integracao 
         #if  get_type != "db_con": 
-        if  get_type == "copel": 
+        if  get_type == "copel" or get_type == "celesc": 
             con0 = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
             cur0 = con0.cursor()
             ws_parametros = cur0.var(str)
@@ -378,19 +379,43 @@ def exec_client(cfg_cliente):
                 dt_f       = par_comando['DT_FINAL']
                 
                 try: 
-                    etl_copel.f_copel(cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
+                    etl_copel.f_copel(cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
                     if not(os.path.isfile(cnx_loc_file+'/'+nm_arquivo)):
                         raise Exception('Arquivo não gerado.')   
                 except Exception as e:
                     raise Exception('Erro gerando arquivo:'+str(e)[0:3500])                                       
 
-                logger.info('COPEL - inserindo...')
+                logger.info(cnx_db+' - inserindo...')
                 try: 
                     import_file(engine, id_client, 'txt', cnx_db, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
                 except Exception as e:
                     os.remove(cnx_loc_file+nm_arquivo)
                     raise Exception('Erro importando arquivo:'+str(e)[0:3500])
-                logger.info('COPEL - Concluido')
+                logger.info(cnx_db+' - Concluido')
+
+            except Exception as e:
+                raise Exception('Erro '+ get_type.upper()+ ': '+str(e)[0:3500])   
+
+
+        if  get_type == "celesc":
+            try: 
+                nm_arquivo = par_comando['FILE_NAME']
+                ano_mes    = par_comando['ANOMES']
+                
+                try: 
+                    etl_celesc.f_celesc(cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, ano_mes)
+                    if not(os.path.isfile(cnx_loc_file+'/'+nm_arquivo)):
+                        raise Exception('Arquivo não gerado.')   
+                except Exception as e:
+                    raise Exception('Erro gerando arquivo:'+str(e)[0:3500])                                       
+
+                logger.info(cnx_db+' - inserindo...')
+                try: 
+                    import_file(engine, id_client, 'txt', cnx_db, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
+                except Exception as e:
+                    os.remove(cnx_loc_file+nm_arquivo)
+                    raise Exception('Erro importando arquivo:'+str(e)[0:3500])
+                logger.info(cnx_db+' - Concluido')
 
             except Exception as e:
                 raise Exception('Erro '+ get_type.upper()+ ': '+str(e)[0:3500])   
@@ -1007,8 +1032,8 @@ logger = logging.getLogger()
 chk = datetime.today()
 h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
 
-drivers  = ['ODBC', 'FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL'] 
-drv_nsql = ['API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL']   # Drivers não SQL
+drivers  = ['ODBC', 'FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL','CELESC'] 
+drv_nsql = ['API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL','CELESC']   # Drivers não SQL
 
 logger.info('Serviço Iniciado [UPQUERY_ETL]')
 
