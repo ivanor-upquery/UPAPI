@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import time
 import logging
@@ -60,6 +61,7 @@ def f_copel(p_cnx, p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
 
     for locais in lista:
         if  locais != '0':
+            dh_i = datetime.now()
             logger.info(p_cnx+' - Download........  Local:'+ locais + '   Periodo: '+p_data_i+' - '+p_data_f)
 
             if os.path.isfile(arquivo_download):
@@ -82,7 +84,8 @@ def f_copel(p_cnx, p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
                     print(arquivo_download+' ......')
                     time.sleep(1)
 
-            logger.info(p_cnx+' - Download........  Local:'+ locais + '   Periodo: '+p_data_i+' - '+p_data_f + '............ OK')
+            dh_f = datetime.now()
+            logger.info(p_cnx+' - Download........  Local:'+ locais + '   Periodo: '+p_data_i+' - '+p_data_f + '............ OK  ['+str(dh_f - dh_i)+']')
 
     logger.info(p_cnx+' - Download........ OK')
     driver.quit()

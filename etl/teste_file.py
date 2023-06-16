@@ -4,35 +4,32 @@ import cx_Oracle
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from requests.structures import CaseInsensitiveDict
-from datetime import datetime, timedelta
-from datetime import date
 from time import gmtime, strftime
 import configparser as ConfigParser
 import os
 import csv
-
+import glob
+import fnmatch
+from datetime import datetime
 
 import glob
 import fnmatch
-
-import glob
-import fnmatch
-
-import datetime as dt
 import calendar
 
-p_ano_mes = '202306'
+print(str((datetime.now()) - datetime.now()))
 
-ano = p_ano_mes[0:4]
-mes = p_ano_mes[-2:]
-print(ano)
-print(mes)
-date = dt.date(int(ano), int(mes), 1)
-p_mes_ref = date.strftime('%m/%Y')
-p_data_i  = date.replace(day = 1).strftime('%d/%m/%Y')
-p_data_f  = date.replace(day = calendar.monthrange(date.year, date.month)[1]).strftime('%d/%m/%Y')
 
-print('Atenção: '+p_mes_ref+' - '+p_data_i+' - '+p_data_f)
+# p_ano_mes = '202306'
+# ano = p_ano_mes[0:4]
+# mes = p_ano_mes[-2:]
+# print(ano)
+# print(mes)
+# date = dt.date(int(ano), int(mes), 1)
+# p_mes_ref = date.strftime('%m/%Y')
+# p_data_i  = date.replace(day = 1).strftime('%d/%m/%Y')
+# p_data_f  = date.replace(day = calendar.monthrange(date.year, date.month)[1]).strftime('%d/%m/%Y')
+
+# print('Atenção: '+p_mes_ref+' - '+p_data_i+' - '+p_data_f)
 
 #a2 = "aa|bbb|111"
 #a3 = "X1|X2|X3"

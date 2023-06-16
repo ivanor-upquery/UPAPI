@@ -400,10 +400,11 @@ def exec_client(cfg_cliente):
         if  get_type == "celesc":
             try: 
                 nm_arquivo = par_comando['FILE_NAME']
-                ano_mes    = par_comando['ANOMES']
+                dt_i       = par_comando['DT_INICIAL']
+                dt_f       = par_comando['DT_FINAL']
                 
                 try: 
-                    etl_celesc.f_celesc(cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, ano_mes)
+                    etl_celesc.f_celesc(cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
                     if not(os.path.isfile(cnx_loc_file+'/'+nm_arquivo)):
                         raise Exception('Arquivo não gerado.')   
                 except Exception as e:
