@@ -8,11 +8,11 @@ from selenium.webdriver.common.by import By
 
 def f_copel(p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
 
-    log_file = '/opt/oracle/upapi/logs/copel.log'
+    log_file = '/opt/oracle/upapi/logs/upquery_etl.log'
     logging.basicConfig(filename=log_file, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
     logger = logging.getLogger()
 
-    arquivo_download = pasta + '/' + arquivo
+    arquivo_download = pasta + arquivo
     option = Options()
     option.add_argument('--headless')
     option.add_argument("--no-sandbox")
@@ -59,7 +59,7 @@ def f_copel(p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
 
     for locais in lista:
         if  locais != '0':
-            logger.info('Local: '+ locais + ' Periodo: '+p_data_i+' - '+p_data_f)
+            logger.info('COPEL - Download........  Local:'+ locais + '   Periodo: '+p_data_i+' - '+p_data_f)
 
             if os.path.isfile(arquivo_download):
                 os.remove(arquivo_download)
@@ -81,7 +81,6 @@ def f_copel(p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
                     print(arquivo_download+' ......')
                     time.sleep(1)
 
-            logger.info("Download........ [OK] ")
+            logger.info('COPEL - Download........  Local:'+ locais + '   Periodo: '+p_data_i+' - '+p_data_f + '............ OK')
 
-
-    logger.info('COPEL OK')
+    logger.info('COPEL - Download........ OK')

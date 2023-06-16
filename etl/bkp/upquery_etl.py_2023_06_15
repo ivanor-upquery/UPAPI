@@ -25,7 +25,6 @@ import configparser as ConfigParser
 import os
 import csv
 import fnmatch
-import etl_copel 
 
 # -------------------------------------------------------------------------------------------
 # Formato Parametro 
@@ -44,86 +43,64 @@ def get_par(dados,parametro,defval):
 # -------------------------------------------------------------------------------------------
 #  função que importa arquivo enviado por FTP
 # -------------------------------------------------------------------------------------------
-def import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear):
+def exec_file(cfg_cliente):
 
-    nm_arquivo   = par_comando['FILE_NAME']
-    nr_row_par   = int(par_comando['ROW_PAR'])
-    nr_row_cab   = int(par_comando['ROW_CAB'])
-    nr_row_ini   = int(par_comando['ROW_INI'])
-    cd_separador = ""
-    if get_type == "txt":
-        cd_separador = par_comando['SEPARATOR']
+    # --- Pega os parametros do comando -----------------------------------------------------------
+    if exec_comando is None:
+        raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.')
+    params     = exec_comando.split('|')
+    try:
+        ws_arquivo   = (params[0]).strip()
+        ws_separador = ""
+        if get_type == "txt":
+            ws_separador = params[1]
+    except Exception as e:
+        raise Exception('Numero incorreto de parâmetros no comando ['+ str(e)[0:3500] + ']')
 
-    if nm_arquivo.find("'") != -1:
+    if ws_arquivo.find("'") != -1:
         raise Exception('Nome do arquivo nao pode conter ASPAS.')
-    
-    nm_arquivo = cnx_loc_file + nm_arquivo
 
-    logger.info('x1')
-    # -- Lê arquivo -----------------------------------------------------------
-    if get_type == "excel":
-        if nm_arquivo[-3:].upper() == 'XLS':
-            dados = pd.read_excel(nm_arquivo, engine='xlrd', header=None)
-        else:     
-            dados = pd.read_excel(nm_arquivo, engine='openpyxl', header=None)
-    else:
-        dados = pd.read_csv(nm_arquivo, sep=cd_separador, header=None, encoding = "ISO-8859-1", low_memory=False, error_bad_lines=False)
+    try:
+        # --- Lê arquivo -----------------------------------------------------------
+        engine.fast_executemany = True
 
-    # -- Monta o cabeçalho pegando do próprio arquivo ou da tabela de destino ----------------------------------------------------------- 
-    if nr_row_cab > 0:
-        try:
-            dados.columns = dados.loc[nr_row_cab-1].str.strip().str.lower().str.replace(".","_")
-        except Exception as e:
-            raise Exception('Erro pegando cabeçalho do arquivo, verifique se o arquivo realmente possui cabeçalho no conteúdo.'+str(e)[0:3000])   
-    else: 
-        if cnx_db == 'copel':
-            dados.drop(dados.columns[23], axis=1, inplace=True)
-            dados.columns = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura']
+        if get_type == "excel":
+            if ws_arquivo[-3:].upper() == 'XLS':
+                dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='xlrd')
+            else:     
+                dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='openpyxl')
         else:
-            try:
-                dados.columns = tab_colunas
-            except Exception as e:
-                raise Exception('Erro pegando cabeçalho a partir da tabela de destino, quantidade de colunas do arquivo difere das colunas da tabela.'+str(e)[0:3000])   
-    
-    # -- Substitui os parametros do comando limpeza da tabela de destino, se existir parametros  ----------------------------------------------------------- 
-    if nr_row_par > 0:
-        try:
-            param_arq = pd.Series(dados.loc[nr_row_par-1])
-        except Exception as e:
-            raise Exception('Erro pegando parametros do arquivo, verifique se o arquivo realmente possui parâmetros no conteúdo.'+str(e)[0:3000])   
+            dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador)
 
-        for index in range(len(dados.columns)):
-            print(dados.columns[index]) 
-            print(param_arq[dados.columns[index]])
-            exec_clear = exec_clear.upper().replace(":"+str(dados.columns[index].upper()), "'" + str(param_arq[dados.columns[index]])+ "'" )
-    
-    # -- Exclui colunas que não existem na tabela de destino 
-    for index in range(len(tab_colunas)):
-        if  tab_colunas[index] not in dados.columns:
-            dados[tab_colunas[index]]=''
-    dados = dados[tab_colunas]
-    
-    # -- Exclui as linhas a serem ignoradas -----------------------------------------------------------
-    if nr_row_ini > 1:
-        for i in range(0, nr_row_ini-1):
-            dados.drop(i, axis='rows', inplace = True)
+        object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+        dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
 
-    # -- Exclui registros da tabela de destino -----------------------------------------------------------
-    if exec_clear is not None:
+        # --- Exclui registros -----------------------------------------------------------
+        if exec_clear is not None:
+            with engine.connect() as con0:
+                    r_del = con0.execute(exec_clear)
+        
+        # --- Monta as colunas da tabela a serem inseridas 
+        dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
+        for index in range(len(tab_colunas)):
+            if  tab_colunas[index] not in dados.columns:
+                dados[tab_colunas[index]]=''
+        dados = dados[tab_colunas]
+
+        # --- Insere registros e atualiza status da fila -----------------------------------------------------------
         with engine.connect() as con0:
-            r_del = con0.execute(exec_clear)
-    
-    # -- Define o tipo das colunas do insert para VARCHAR quando forem do tipo object -----------------------------------------------------------
-    object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-    dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+                dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+        
+        # os.rename(cnx_loc_file+ws_arquivo, cnx_loc_file+"bkp/"+ws_arquivo)
+        os.remove(cnx_loc_file+ws_arquivo)
 
-    # -- Insere registros e atualiza status da fila -----------------------------------------------------------
-    with engine.connect() as con0:
-        dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000) # ,  dtype=dtyp)
-        r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+    except Exception as e:
+        erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
+        logger.error(erros)
+        with engine.connect() as con0:
+                r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
-    con0.close()
-    logger.info('x5')            
 
 # -------------------------------------------------------------------------------------------
 #  função que importa arquivo enviado por FTP
@@ -339,7 +316,7 @@ def exec_client(cfg_cliente):
         if  cnx_db == "ORACLE":
             dsn_origem = cx_Oracle.makedsn(cnx_host, cnx_port, cnx_service)
             con = cx_Oracle.connect(user=cnx_user,password=cnx_pass, dsn=dsn_origem)
-        if  cnx_db in drv_nsql:            
+        if  cnx_db in ('API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL','TXT','API_TRELLO'):
             get_type = cnx_db.lower()
 
         if  get_type == "db_con": 
@@ -358,8 +335,7 @@ def exec_client(cfg_cliente):
                  r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
         # Busca parametros do comando de integracao 
-        #if  get_type != "db_con": 
-        if  get_type == "copel": 
+        if  get_type != "db_con": 
             con0 = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
             cur0 = con0.cursor()
             ws_parametros = cur0.var(str)
@@ -368,114 +344,85 @@ def exec_client(cfg_cliente):
             con0.close()
             par_comando = pd.Series(ws_conteudos.getvalue().split('|'), index=ws_parametros.getvalue().split('|')) 
 
-        if  get_type == "copel":
-            try: 
-                nm_arquivo = par_comando['FILE_NAME']
-                dt_i       = par_comando['DT_INICIAL']
-                dt_f       = par_comando['DT_FINAL']
+        if  get_type == "excel_NEW" or get_type == "txt_NEW":
+
+            ws_arquivo   = par_comando['FILE_NAME']
+            ws_row_par   = int(par_comando['ROW_PAR'])
+            ws_row_cab   = int(par_comando['ROW_CAB'])
+            ws_row_ini   = int(par_comando['ROW_INI'])
+            ws_separador = ""
+            if get_type == "txt":
+                ws_separador = par_comando['SEPARATOR']
+
+            if ws_arquivo.find("'") != -1:
+                raise Exception('Nome do arquivo nao pode conter ASPAS.')
+
+            try:
+                # -- Lê arquivo -----------------------------------------------------------
+                if get_type == "excel":
+                    if ws_arquivo[-3:].upper() == 'XLS':
+                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='xlrd', header=None)
+                    else:     
+                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='openpyxl', header=None)
+                else:
+                    dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador, header=None)
+
+                # -- Monta o cabeçalho pegando do próprio arquivo ou da tabela de destino ----------------------------------------------------------- 
+                if ws_row_cab > 0:
+                    try:
+                        dados.columns = dados.loc[ws_row_cab-1].str.strip().str.lower().str.replace(".","_")
+                    except Exception as e:
+                        raise Exception('Erro pegando cabeçalho do arquivo, verifique se o arquivo realmente possui cabeçalho no conteúdo.'+str(e)[0:3000])   
+                else: 
+                    try:
+                        dados.columns = tab_colunas
+                    except Exception as e:
+                        raise Exception('Erro pegando cabeçalho a partir da tabela de destino, quantidade de colunas do arquivo difere das colunas da tabela.'+str(e)[0:3000])   
+
+                # -- Substitui os parametros do comando limpeza da tabela de destino, se existir parametros  ----------------------------------------------------------- 
+                if ws_row_par > 0:
+                    try:
+                        param_arq = pd.Series(dados.loc[ws_row_par-1])
+                    except Exception as e:
+                        raise Exception('Erro pegando parametros do arquivo, verifique se o arquivo realmente possui parâmetros no conteúdo.'+str(e)[0:3000])   
+
+                    for index in range(len(dados.columns)):
+                        print(dados.columns[index]) 
+                        print(param_arq[dados.columns[index]])
+                        exec_clear = exec_clear.upper().replace(":"+str(dados.columns[index].upper()), "'" + str(param_arq[dados.columns[index]])+ "'" )
+
+                # -- Exclui colunas que não existem na tabela de destino 
+                for index in range(len(tab_colunas)):
+                    if  tab_colunas[index] not in dados.columns:
+                        dados[tab_colunas[index]]=''
+                dados = dados[tab_colunas]
+
+                # -- Exclui as linhas a serem ignoradas -----------------------------------------------------------
+                if ws_row_ini > 1:
+                    for i in range(0, ws_row_ini-1):
+                        dados.drop(i, axis='rows', inplace = True)
+
+                # -- Exclui registros da tabela de destino -----------------------------------------------------------
+                if exec_clear is not None:
+                    with engine.connect() as con0:
+                         r_del = con0.execute(exec_clear)
+
+                # -- Insere registros e atualiza status da fila -----------------------------------------------------------
+                with engine.connect() as con0:
+                     dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000) # ,  dtype=dtyp)
+                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
                 
-                try: 
-                    etl_copel.f_copel(cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
-                    if not(os.path.isfile(cnx_loc_file+'/'+nm_arquivo)):
-                        raise Exception('Arquivo não gerado.')   
-                except Exception as e:
-                    raise Exception('Erro gerando arquivo:'+str(e)[0:3500])                                       
-
-                try: 
-                    import_file(engine, id_client, 'txt', get_type, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
-                except Exception as e:
-                    os.remove(cnx_loc_file+nm_arquivo)
-                    raise Exception('Erro importando arquivo:'+str(e)[0:3500])
+                os.remove(cnx_loc_file+ws_arquivo)
 
             except Exception as e:
-                raise Exception('Erro '+ get_type.upper()+ ': '+str(e)[0:3500])   
+                os.remove(cnx_loc_file+ws_arquivo)
+                erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
+                logger.error(erros)
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
 
-        if  get_type == "excel_new" or get_type == "txt_new":
-            nm_arquivo   = par_comando['FILE_NAME']
-            try: 
-                import_file(engine, id_client, get_type, get_type, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
-                os.remove(cnx_loc_file+nm_arquivo)
-            except Exception as e:
-                os.remove(cnx_loc_file+nm_arquivo)
-                raise Exception('Erro '+ get_type.upper()+ ': '+str(e)[0:3500])   
-
-            ## ws_arquivo   = par_comando['FILE_NAME']
-            ## ws_row_par   = int(par_comando['ROW_PAR'])
-            ## ws_row_cab   = int(par_comando['ROW_CAB'])
-            ## ws_row_ini   = int(par_comando['ROW_INI'])
-            ## ws_separador = ""
-            ## if get_type == "txt":
-            ##     ws_separador = par_comando['SEPARATOR']
-
-            ## if ws_arquivo.find("'") != -1:
-            ##     raise Exception('Nome do arquivo nao pode conter ASPAS.')
- 
-            ## try:
-            ##     # -- Lê arquivo -----------------------------------------------------------
-            ##     if get_type == "excel":
-            ##         if ws_arquivo[-3:].upper() == 'XLS':
-            ##             dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='xlrd', header=None)
-            ##         else:     
-            ##             dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='openpyxl', header=None)
-            ##     else:
-            ##         dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador, header=None)
- 
-            ##     # -- Monta o cabeçalho pegando do próprio arquivo ou da tabela de destino ----------------------------------------------------------- 
-            ##     if ws_row_cab > 0:
-            ##         try:
-            ##             dados.columns = dados.loc[ws_row_cab-1].str.strip().str.lower().str.replace(".","_")
-            ##         except Exception as e:
-            ##             raise Exception('Erro pegando cabeçalho do arquivo, verifique se o arquivo realmente possui cabeçalho no conteúdo.'+str(e)[0:3000])   
-            ##     else: 
-            ##         try:
-            ##             dados.columns = tab_colunas
-            ##         except Exception as e:
-            ##             raise Exception('Erro pegando cabeçalho a partir da tabela de destino, quantidade de colunas do arquivo difere das colunas da tabela.'+str(e)[0:3000])   
- 
-            ##     # -- Substitui os parametros do comando limpeza da tabela de destino, se existir parametros  ----------------------------------------------------------- 
-            ##     if ws_row_par > 0:
-            ##         try:
-            ##             param_arq = pd.Series(dados.loc[ws_row_par-1])
-            ##         except Exception as e:
-            ##             raise Exception('Erro pegando parametros do arquivo, verifique se o arquivo realmente possui parâmetros no conteúdo.'+str(e)[0:3000])   
- 
-            ##         for index in range(len(dados.columns)):
-            ##             print(dados.columns[index]) 
-            ##             print(param_arq[dados.columns[index]])
-            ##             exec_clear = exec_clear.upper().replace(":"+str(dados.columns[index].upper()), "'" + str(param_arq[dados.columns[index]])+ "'" )
- 
-            ##     # -- Exclui colunas que não existem na tabela de destino 
-            ##     for index in range(len(tab_colunas)):
-            ##         if  tab_colunas[index] not in dados.columns:
-            ##             dados[tab_colunas[index]]=''
-            ##     dados = dados[tab_colunas]
- 
-            ##     # -- Exclui as linhas a serem ignoradas -----------------------------------------------------------
-            ##     if ws_row_ini > 1:
-            ##         for i in range(0, ws_row_ini-1):
-            ##             dados.drop(i, axis='rows', inplace = True)
- 
-            ##     # -- Exclui registros da tabela de destino -----------------------------------------------------------
-            ##     if exec_clear is not None:
-            ##         with engine.connect() as con0:
-            ##              r_del = con0.execute(exec_clear)
- 
-            ##     # -- Insere registros e atualiza status da fila -----------------------------------------------------------
-            ##     with engine.connect() as con0:
-            ##          dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000) # ,  dtype=dtyp)
-            ##          r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
-            ##     
-            ##     os.remove(cnx_loc_file+ws_arquivo)
- 
-            ## except Exception as e:
-            ##     os.remove(cnx_loc_file+ws_arquivo)
-            ##     erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
-            ##     logger.error(erros)
-            ##     with engine.connect() as con0:
-            ##          r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
-
-        if  get_type == "excel_OLD" or get_type == "txt_OLD":
+        if  get_type == "excel" or get_type == "txt":
 
             # --- Pega os parametros do comando -----------------------------------------------------------
             if exec_comando is None:
@@ -1002,8 +949,8 @@ logger = logging.getLogger()
 chk = datetime.today()
 h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
 
-drivers  = ['ODBC', 'FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL'] 
-drv_nsql = ['API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL']   # Drivers não SQL
+drivers = ['ODBC', 'FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT','API_TRELLO']
+
 
 logger.info('Serviço Iniciado [UPQUERY_ETL]')
 

@@ -92,8 +92,6 @@ def exec_client(id_uniq, session, engine, dsn):
     cnx_usuario   = get_par(data_con,'USUARIO','')
     cnx_senha     = get_par(data_con,'SENHA','')
     
-    logger.info('a2')
-    logger.info(data_con)
     tipo_integracao = cnx_db.lower()
 
     con0 = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
@@ -115,12 +113,6 @@ def exec_client(id_uniq, session, engine, dsn):
             arquivo = par_comando['FILE_NAME']
             dt_i    = par_comando['DT_INICIAL']
             dt_f    = par_comando['DT_FINAL']
-
-            logger.info('a1')
-            logger.info(arquivo)
-            logger.info(dt_i)
-            logger.info(dt_f)
-
             etl_copel.f_copel(cnx_usuario, cnx_senha, cnx_loc_file, arquivo, dt_i, dt_f)
             if os.path.isfile(cnx_loc_file+'/'+arquivo):
                 logger.info('Download OK - Cliente ['+id_uniq+'] Conexao ['+cnx_db+']')
