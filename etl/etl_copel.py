@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 session = []
 
 def f_log (p_ds_log):
-    logfile = open('/opt/oracle/upapi/logs/copel.log', 'a')
+    logfile = open('/opt/oracle/upapi/logs/etl_copel.log', 'a')
     print(datetime.now().strftime("%m/%d/%Y %H:%M:%S  ["+ session[0] +'] - ' + session[1] + ' - ' + p_ds_log), file = logfile)
     logfile.close()
 
@@ -98,5 +98,5 @@ def f_copel(p_id_client, p_cnx, p_usuario, p_senha, p_pasta, p_arquivo, p_data_i
             f_log('Local: '+ locais + ' - Periodo: '+p_data_i+' ate '+p_data_f + ' - FIM ['+str(dh_f - dh_i)+']') 
 
     f_log('FIM')
-    
+
     driver.quit()

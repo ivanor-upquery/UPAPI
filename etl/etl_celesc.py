@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 session = []
 
 def f_log (p_ds_log):
-    logfile = open('/opt/oracle/upapi/logs/celesc.log', 'a')
+    logfile = open('/opt/oracle/upapi/logs/etl_celesc.log', 'a')
     print(datetime.now().strftime("%m/%d/%Y %H:%M:%S  ["+ session[0] +'] - ' + session[1] + ' - ' + p_ds_log), file = logfile)
     logfile.close()
 
