@@ -7,13 +7,13 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
-def f_celesc(p_cnx, p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
+def f_celesc(p_cnx, p_usuario, p_senha, p_pasta, p_arquivo, p_data_i, p_data_f):
     
     log_file = '/opt/oracle/upapi/logs/upquery_etl.log'
     logging.basicConfig(filename=log_file, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
     logger = logging.getLogger()
 
-    arquivo_download = pasta + arquivo
+    arquivo_download = p_pasta + p_arquivo
 
     option = Options()
     option.add_argument('--headless')
@@ -26,10 +26,8 @@ def f_celesc(p_cnx, p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
     option.add_argument("--extension-load-timeout=60000")
     option.binary_location = r"/opt/google/chrome/google-chrome"
 
-    prefs={'download.default_directory': "/opt/oracle/upapi"}
-
     option.add_experimental_option('prefs', {
-        "download.default_directory": r"/opt/oracle/upapi",
+        "download.default_directory": r""+p_pasta,
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "plugins.always_open_pdf_externally": True
@@ -60,10 +58,7 @@ def f_celesc(p_cnx, p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
 
     driver.find_element_by_name("searchConcessionariaId").send_keys(Keys.ARROW_DOWN+Keys.SPACE)
     driver.find_element_by_name("searchEmpreiteiraId").send_keys(Keys.ARROW_DOWN+Keys.SPACE)
-
     logger.info(p_cnx+' - Concessionaria........ OK')
-    #select_box = driver.find_element_by_name("searchLocalidadeId")
-    #options = [x for x in select_box.find_elements_by_tag_name("option")]
 
     lista=['Todas']
 

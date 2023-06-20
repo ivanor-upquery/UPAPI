@@ -16,7 +16,9 @@ import glob
 import fnmatch
 import calendar
 
-print(str((datetime.now()) - datetime.now()))
+
+
+# print(str((datetime.now()) - datetime.now()))
 
 
 # p_ano_mes = '202306'
