@@ -7,13 +7,13 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
-def f_copel(p_cnx, p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
+def f_copel(p_cnx, p_usuario, p_senha, p_pasta, p_arquivo, p_data_i, p_data_f):
 
     log_file = '/opt/oracle/upapi/logs/upquery_etl.log'
     logging.basicConfig(filename=log_file, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
     logger = logging.getLogger()
 
-    arquivo_download = pasta + arquivo
+    arquivo_download = p_pasta + p_arquivo
 
     option = Options()
     option.add_argument('--headless')
@@ -26,10 +26,8 @@ def f_copel(p_cnx, p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
     option.add_argument("--enable-features=NetworkServiceInProcess")
     option.binary_location = r"/opt/google/chrome/google-chrome"
 
-    prefs={'download.default_directory': pasta}
-
     option.add_experimental_option('prefs', {
-        "download.default_directory": r""+pasta,
+        "download.default_directory": r""+p_pasta,
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "plugins.always_open_pdf_externally": True
@@ -38,16 +36,19 @@ def f_copel(p_cnx, p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
     driver = webdriver.Chrome("/usr/bin/chromedriver", options = option)
     time.sleep(5)
     
+    logger.info(p_cnx+' - Abrindo site........')
     driver.get("https://www.copel.com/lis/")
     time.sleep(10)
     
     driver.find_element_by_class_name("lbl_campo_maiusculo").send_keys(p_usuario)
     driver.find_element_by_class_name("lbl_campo").send_keys(p_senha)
     time.sleep(2)
+    logger.info(p_cnx+' - Senha........ OK')
     
     pressione = driver.find_element_by_class_name("lgn_btn")
     driver.execute_script("arguments[0].click();", pressione)
     time.sleep(5)
+    logger.info(p_cnx+' - Login........ OK')
 
     # pressione = driver.find_element(By.XPATH,'//*[@id="Table_01"]/tbody/tr[2]/td/table/tbody/tr/td[1]/table/tbody/tr[12]/td/table/tbody/tr[4]/td/a')
     pressione = driver.find_element(By.XPATH,'//*[@id="Table_01"]/tbody/tr[2]/td/table/tbody/tr/td[1]/table/tbody/tr[11]/td/table/tbody/tr[4]/td/a')
@@ -56,7 +57,8 @@ def f_copel(p_cnx, p_usuario, p_senha, pasta, arquivo, p_data_i, p_data_f):
 
     driver.find_element_by_name("searchConcessionariaId").send_keys(Keys.ARROW_DOWN+Keys.SPACE)
     driver.find_element_by_name("searchEmpreiteiraId").send_keys(Keys.ARROW_DOWN+Keys.SPACE)
-
+    logger.info(p_cnx+' - Concessionaria........ OK')
+    
     lista=['Todas']
 
     for locais in lista:

@@ -41,6 +41,39 @@ def get_par(dados,parametro,defval):
            retorno = defval
     return retorno
   
+# -------------------------------------------------------------------------------------------
+#  Monta os parametros do comando
+# -------------------------------------------------------------------------------------------
+def monta_param_comando (engine, cnx_db, exec_comando): 
+
+    if exec_comando is None or len(exec_comando) <= 0:
+        raise Exception('Comando esta vazio, nao possue parametros para extracao') 
+
+    lista_comando = exec_comando.split('|')
+    parametros    = []
+    lista_cd      = []
+    lista_vl      = []
+
+    with engine.connect() as con0:
+        data_exec = pd.read_sql_query("select listagg(cd_parametro||'#@#@'||vl_default,'|') within group (order by ordem_comando) parametros from etl_tipo_conexao where tp_conexao = :1 and tp_parametro ='COMANDO'",con=con0, params=[cnx_db])
+        if  data_exec['parametros'].values[0] is None:
+            raise Exception('Nao foi possivel obter os parametros de comando para o tipo de conexao ['+cnx_db+']') 
+        parametros = str(data_exec['parametros'].values[0]).split('|')
+        con0.close() 
+
+    index = 0
+    for param in parametros:
+        index = index + 1
+        lista_cd.append(param.split('#@#@')[0])
+        try:
+            vl = lista_comando[index-1]      # pega conteudo do comando (se existir)
+        except Exception:    
+            vl = param.split('#@#@')[1]      # pega o valor default do parametro (se não existir o parametro dentro do comando)
+        lista_vl.append(vl)
+
+    par_comando = pd.Series(lista_vl, index=lista_cd)
+    return par_comando 
+
 
 # -------------------------------------------------------------------------------------------
 #  função que importa arquivo enviado por FTP
@@ -362,15 +395,8 @@ def exec_client(cfg_cliente):
                  r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
         # Busca parametros do comando de integracao 
-        #if  get_type != "db_con": 
-        if  get_type == "copel" or get_type == "celesc": 
-            con0 = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
-            cur0 = con0.cursor()
-            ws_parametros = cur0.var(str)
-            ws_conteudos  = cur0.var(str)
-            cur0.execute ('begin etf.ftp_get_comando_param(:1,:2,:3,:4); end;', [cnx_db, exec_comando, ws_parametros, ws_conteudos])
-            con0.close()
-            par_comando = pd.Series(ws_conteudos.getvalue().split('|'), index=ws_parametros.getvalue().split('|')) 
+        if  get_type != "db_con": 
+            par_comando = monta_param_comando (engine, cnx_db, exec_comando)
 
         if  get_type == "copel":
             try: 
