@@ -110,8 +110,6 @@ def import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_c
             raise Exception('Erro pegando parametros do arquivo, verifique se o arquivo realmente possui parâmetros no conteúdo.'+str(e)[0:3000])   
 
         for index in range(len(dados.columns)):
-            print(dados.columns[index]) 
-            print(param_arq[dados.columns[index]])
             exec_clear = exec_clear.upper().replace(":"+str(dados.columns[index].upper()), "'" + str(param_arq[dados.columns[index]])+ "'" )
 
     # -- Monta o cabeçalho pegando do próprio arquivo ou da tabela de destino ----------------------------------------------------------- 
@@ -404,14 +402,15 @@ def exec_client(cfg_cliente):
                 dt_i       = par_comando['DT_INICIAL']
                 dt_f       = par_comando['DT_FINAL']
                 
+                logger.info(cnx_db+' - Baixando...')
                 try: 
-                    etl_copel.f_copel(cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
+                    etl_copel.f_copel(id_client, cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
                     if not(os.path.isfile(cnx_loc_file+'/'+nm_arquivo)):
                         raise Exception('Arquivo não gerado.')   
                 except Exception as e:
                     raise Exception('Erro gerando arquivo:'+str(e)[0:3500])                                       
 
-                logger.info(cnx_db+' - inserindo...')
+                logger.info(cnx_db+' - Inserindo...')
                 try: 
                     import_file(engine, id_client, 'txt', cnx_db, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
                 except Exception as e:
@@ -430,7 +429,7 @@ def exec_client(cfg_cliente):
                 dt_f       = par_comando['DT_FINAL']
                 
                 try: 
-                    etl_celesc.f_celesc(cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
+                    etl_celesc.f_celesc(id_client, cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
                     if not(os.path.isfile(cnx_loc_file+'/'+nm_arquivo)):
                         raise Exception('Arquivo não gerado.')   
                 except Exception as e:

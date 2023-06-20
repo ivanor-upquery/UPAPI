@@ -14,9 +14,50 @@ from datetime import datetime
 
 import glob
 import fnmatch
-import calendar
+
+sourceFile = open('/opt/oracle/upapi/logs/teste2.log', 'a')
+print('Hello, Python!', file = sourceFile)
+print('2Hello, Python!', file = sourceFile)
+print('3Hello, Python!', file = sourceFile)
+print('4Hello, Python!', file = sourceFile)
+print(datetime.now().strftime("%m/%d/%Y %H:%M:%S"), file = sourceFile)
+sourceFile.close()
+
+#with open(logfile, "w") as log:
+#    log.write(('teste 1'))
+#    log.write(('teste 2'))
+#    log.write(('teste 3'))
 
 
+
+#log_file_2 = '/opt/oracle/upapi/logs/teste2.log'
+#log_file = '/opt/oracle/upapi/logs/teste1.log'
+#logging.basicConfig(filename=log_file, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
+#logger = logging.getLogger('root')
+
+#log_file_2 = '/opt/oracle/upapi/logs/teste2.log'
+# logging.basicConfig(filename=log_file_2, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
+
+#log = logging.basicConfig(filename=log_file_2, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', level=logging.INFO)
+
+#print(log)
+#log2 = log.getLogger('log2')
+
+
+#formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(message)s')
+#handler = logging.FileHandler(log_file_2)
+#handler.setFormatter(formatter)
+#
+#specified_logger = logging.getLogger('log2')
+#specified_logger.setLevel(logging.DEBUG)
+#specified_logger.addHandler(handler)
+#
+#specified_logger.debug('teste 2')
+
+#log2.addHandler(fileHandler)
+
+#log2.info('teste2')
+#log2.info('teste2 - novamente')
 
 # print(str((datetime.now()) - datetime.now()))
 
