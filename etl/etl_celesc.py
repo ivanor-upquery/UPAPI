@@ -97,7 +97,7 @@ def f_celesc(p_id_client, p_cnx, p_usuario, p_senha, p_pasta, p_arquivo, p_data_
 
             driver.execute_script("arguments[0].click();", pressione)
             f_log('Donwloading........')
-            time.sleep(80)
+            time.sleep(25)
 
             try:
                 alert = driver.switch_to_alert()
