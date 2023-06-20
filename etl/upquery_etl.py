@@ -447,7 +447,7 @@ def exec_client(cfg_cliente):
                 raise Exception('Erro '+ get_type.upper()+ ': '+str(e)[0:3500])   
 
 
-        if  get_type == "excel_new" or get_type == "txt_new":
+        if  get_type == "excel" or get_type == "txt":
             nm_arquivo   = par_comando['FILE_NAME']
             try: 
                 import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
