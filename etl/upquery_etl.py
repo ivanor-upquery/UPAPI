@@ -81,7 +81,7 @@ def insert_etl_fila (engine, p_step_id, p_file):
 
     with engine.connect() as con0:
         data_exec = pd.read_sql_query("select es.comando, es.comando_limpar, es.tbl_destino, es.id_conexao from etl_step es where es.step_id = :prm_step_id",con=con0, params=[p_step_id])
-        if  data_exec['parametros'].values[0] is None:
+        if len(data_exec) < 1:
             raise Exception('Nao foi possivel obter os dados da ETL_STEP referente ao step_id ['+p_step_id+']') 
         comando        = str(data_exec['comando'].values[0])
         comando_limpar = str(data_exec['comando_limpar'].values[0])
@@ -95,8 +95,6 @@ def insert_etl_fila (engine, p_step_id, p_file):
 
     try:
         with engine.connect() as con0:
-            #data_exec = pd.read_sql_query("select etf.gen_id as gend_id from dual",con=con0)
-            #gen_id    = str(data_exec['gen_id'].values[0])
             r_back = con0.execute("insert into ETL_FILA (id_uniq,tbl_destino,comando,comando_limpar,dt_criacao,status,id_conexao,step_id) values (etf.gen_id,:1,:2,:3,sysdate,'A',:4,:5)",
                                   [tbl_destino, comando, comando_limpar, id_conexao, p_step_id])
     except Exception as e:
@@ -207,6 +205,8 @@ def ftp_client(cfg_cliente):
         con0 = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
         cur0 = con0.cursor()
         cur1 = con0.cursor()
+        
+        engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
        
         cur0.execute("select step.step_id, con.conteudo, step.comando from etl_conexoes con, etl_step step where step.id_conexao = con.id_conexao and con.cd_parametro = 'DB' and step.tipo_comando = 'INTEGRADOR_FTP'") 
         steps = cur0.fetchall()
@@ -217,7 +217,8 @@ def ftp_client(cfg_cliente):
                 for file in fnmatch.filter(os.listdir(fonte_ftp),ws_arquivo):
                     cnt=pd.read_sql_query("select count(*) as CNT from ETL_FILA where status='A' and run_id=:1 ",con=con0,params=[ws_step_id])
                     if cnt['CNT'].values[0] == 0:
-                        cur1.callproc('etf.ftp_etl_fila_new',[ws_step_id, file])
+                        logger.info(' teste 1')
+                        insert_etl_fila (engine, ws_step_id, file)
                         logger.info('FTP - Criado fila arquivo: ' + fonte_ftp+'/'+file)
 
             except Exception as e:
@@ -1105,11 +1106,12 @@ while True:
               fonte_serv = config[section].get('servicename','')
               fonte_port = config[section].get('port','1521')
               fonte_ftp  = config[section].get('ftp_path','N/A')
+              dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
+              engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
+
               if fonte_ftp != "N/A":
                  ftp_client(section)
 
-              dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
-              engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
               try:
                   with engine.connect() as con0:
                        data_cnt=pd.read_sql_query("select count(*) as cnt from ETL_FILA where status='A'",con=con0)
