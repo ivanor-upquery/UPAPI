@@ -423,7 +423,7 @@ def exec_client(cfg_cliente):
                  r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
         # Busca parametros do comando de integracao 
-        if  get_type != "db_con": 
+        if  get_type == "copel" or get_type == "celesc" or get_type == "excel" or get_type == "txt": 
             par_comando = get_param_comando (engine, cnx_db, exec_comando)
 
         if  get_type == "copel":
@@ -486,81 +486,6 @@ def exec_client(cfg_cliente):
                 os.remove(cnx_loc_file+nm_arquivo)
                 raise Exception('Erro '+ get_type.upper()+ ': '+str(e)[0:3500])   
 
-            ## ws_arquivo   = par_comando['FILE_NAME']
-            ## ws_row_par   = int(par_comando['ROW_PAR'])
-            ## ws_row_cab   = int(par_comando['ROW_CAB'])
-            ## ws_row_ini   = int(par_comando['ROW_INI'])
-            ## ws_separador = ""
-            ## if get_type == "txt":
-            ##     ws_separador = par_comando['SEPARATOR']
-
-            ## if ws_arquivo.find("'") != -1:
-            ##     raise Exception('Nome do arquivo nao pode conter ASPAS.')
- 
-            ## try:
-            ##     # -- Lê arquivo -----------------------------------------------------------
-            ##     if get_type == "excel":
-            ##         if ws_arquivo[-3:].upper() == 'XLS':
-            ##             dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='xlrd', header=None)
-            ##         else:     
-            ##             dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='openpyxl', header=None)
-            ##     else:
-            ##         dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador, header=None)
- 
-            ##     # -- Monta o cabeçalho pegando do próprio arquivo ou da tabela de destino ----------------------------------------------------------- 
-            ##     if ws_row_cab > 0:
-            ##         try:
-            ##             dados.columns = dados.loc[ws_row_cab-1].str.strip().str.lower().str.replace(".","_")
-            ##         except Exception as e:
-            ##             raise Exception('Erro pegando cabeçalho do arquivo, verifique se o arquivo realmente possui cabeçalho no conteúdo.'+str(e)[0:3000])   
-            ##     else: 
-            ##         try:
-            ##             dados.columns = tab_colunas
-            ##         except Exception as e:
-            ##             raise Exception('Erro pegando cabeçalho a partir da tabela de destino, quantidade de colunas do arquivo difere das colunas da tabela.'+str(e)[0:3000])   
- 
-            ##     # -- Substitui os parametros do comando limpeza da tabela de destino, se existir parametros  ----------------------------------------------------------- 
-            ##     if ws_row_par > 0:
-            ##         try:
-            ##             param_arq = pd.Series(dados.loc[ws_row_par-1])
-            ##         except Exception as e:
-            ##             raise Exception('Erro pegando parametros do arquivo, verifique se o arquivo realmente possui parâmetros no conteúdo.'+str(e)[0:3000])   
- 
-            ##         for index in range(len(dados.columns)):
-            ##             print(dados.columns[index]) 
-            ##             print(param_arq[dados.columns[index]])
-            ##             exec_clear = exec_clear.upper().replace(":"+str(dados.columns[index].upper()), "'" + str(param_arq[dados.columns[index]])+ "'" )
- 
-            ##     # -- Exclui colunas que não existem na tabela de destino 
-            ##     for index in range(len(tab_colunas)):
-            ##         if  tab_colunas[index] not in dados.columns:
-            ##             dados[tab_colunas[index]]=''
-            ##     dados = dados[tab_colunas]
- 
-            ##     # -- Exclui as linhas a serem ignoradas -----------------------------------------------------------
-            ##     if ws_row_ini > 1:
-            ##         for i in range(0, ws_row_ini-1):
-            ##             dados.drop(i, axis='rows', inplace = True)
- 
-            ##     # -- Exclui registros da tabela de destino -----------------------------------------------------------
-            ##     if exec_clear is not None:
-            ##         with engine.connect() as con0:
-            ##              r_del = con0.execute(exec_clear)
- 
-            ##     # -- Insere registros e atualiza status da fila -----------------------------------------------------------
-            ##     with engine.connect() as con0:
-            ##          dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000) # ,  dtype=dtyp)
-            ##          r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
-            ##     
-            ##     os.remove(cnx_loc_file+ws_arquivo)
- 
-            ## except Exception as e:
-            ##     os.remove(cnx_loc_file+ws_arquivo)
-            ##     erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
-            ##     logger.error(erros)
-            ##     with engine.connect() as con0:
-            ##          r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
-
         if  get_type == "excel_OLD" or get_type == "txt_OLD":
 
             # --- Pega os parametros do comando -----------------------------------------------------------
@@ -621,18 +546,21 @@ def exec_client(cfg_cliente):
 
         if  get_type == "api_cgi": 
             try:
-                comando = exec_comando.split(',')
+                exec_comando = exec_comando.replace(",","|")
+                comando      = exec_comando.split('|')
                 par_content=json.loads(cnx_content)
                 par_content['params'][1]['valor']=comando[1]
                 par_content['params'][2]['valor']='{\"'+comando[2]+'\": \"'+comando[3]+'\" }'
 
                 with engine.connect() as con0:
                      r_del  = con0.execute(exec_clear)
-
                      data   = requests.put(url=cnx_url, json=par_content).json()
 
                      chk = datetime.today()
                      h_file = chk.strftime('%d%m%Y%H%M%S')
+
+                     #with open("/opt/oracle/upapi/error.txt", "w") as text_file:
+                     #     text_file.write(str(data))
 
                      if  comando[0] == "full_line":
                          dados = pd.DataFrame(data[comando[4]])
