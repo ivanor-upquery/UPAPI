@@ -1,7 +1,6 @@
 from datetime import datetime
 import os
 import time
-import logging
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
