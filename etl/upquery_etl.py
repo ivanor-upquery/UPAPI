@@ -546,8 +546,8 @@ def exec_client(cfg_cliente):
 
         if  get_type == "api_cgi": 
             try:
-                exec_comando = exec_comando.replace(",","|")
-                comando      = exec_comando.split('|')
+                # exec_comando = exec_comando.replace(",","|")  - Verificar possível erro nessa conversao 
+                comando      = exec_comando.split(',')
                 par_content=json.loads(cnx_content)
                 par_content['params'][1]['valor']=comando[1]
                 par_content['params'][2]['valor']='{\"'+comando[2]+'\": \"'+comando[3]+'\" }'
