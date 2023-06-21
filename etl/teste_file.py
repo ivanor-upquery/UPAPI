@@ -15,13 +15,20 @@ from datetime import datetime
 import glob
 import fnmatch
 
-sourceFile = open('/opt/oracle/upapi/logs/teste2.log', 'a')
-print('Hello, Python!', file = sourceFile)
-print('2Hello, Python!', file = sourceFile)
-print('3Hello, Python!', file = sourceFile)
-print('4Hello, Python!', file = sourceFile)
-print(datetime.now().strftime("%m/%d/%Y %H:%M:%S"), file = sourceFile)
-sourceFile.close()
+comando = 'aaa'
+lista_comando    = comando.split('|'); 
+lista_comando[0] = 'XXXXX'
+comando = '|'.join(lista_comando)
+print (comando)
+
+
+#sourceFile = open('/opt/oracle/upapi/logs/teste2.log', 'a')
+#print('Hello, Python!', file = sourceFile)
+#print('2Hello, Python!', file = sourceFile)
+#print('3Hello, Python!', file = sourceFile)
+#print('4Hello, Python!', file = sourceFile)
+#print(datetime.now().strftime("%m/%d/%Y %H:%M:%S"), file = sourceFile)
+#sourceFile.close()
 
 #with open(logfile, "w") as log:
 #    log.write(('teste 1'))

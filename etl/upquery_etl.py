@@ -44,7 +44,7 @@ def get_par(dados,parametro,defval):
 # -------------------------------------------------------------------------------------------
 #  Monta os parametros do comando
 # -------------------------------------------------------------------------------------------
-def monta_param_comando (engine, cnx_db, exec_comando): 
+def get_param_comando (engine, cnx_db, exec_comando): 
 
     if exec_comando is None or len(exec_comando) <= 0:
         raise Exception('Comando esta vazio, nao possue parametros para extracao') 
@@ -73,6 +73,35 @@ def monta_param_comando (engine, cnx_db, exec_comando):
 
     par_comando = pd.Series(lista_vl, index=lista_cd)
     return par_comando 
+
+# -------------------------------------------------------------------------------------------
+#  Monta os parametros do comando
+# -------------------------------------------------------------------------------------------
+def insert_etl_fila (engine, p_step_id, p_file): 
+
+    with engine.connect() as con0:
+        data_exec = pd.read_sql_query("select es.comando, es.comando_limpar, es.tbl_destino, es.id_conexao from etl_step es where es.step_id = :prm_step_id",con=con0, params=[p_step_id])
+        if  data_exec['parametros'].values[0] is None:
+            raise Exception('Nao foi possivel obter os dados da ETL_STEP referente ao step_id ['+p_step_id+']') 
+        comando        = str(data_exec['comando'].values[0])
+        comando_limpar = str(data_exec['comando_limpar'].values[0])
+        tbl_destino    = str(data_exec['tbl_destino'].values[0])
+        id_conexao     = str(data_exec['id_conexao'].values[0])
+        con0.close() 
+
+    lista_comando    = comando.split('|'); 
+    lista_comando[0] = p_file
+    comando = '|'.join(lista_comando)
+
+    try:
+        with engine.connect() as con0:
+            #data_exec = pd.read_sql_query("select etf.gen_id as gend_id from dual",con=con0)
+            #gen_id    = str(data_exec['gen_id'].values[0])
+            r_back = con0.execute("insert into ETL_FILA (id_uniq,tbl_destino,comando,comando_limpar,dt_criacao,status,id_conexao,step_id) values (etf.gen_id,:1,:2,:3,sysdate,'A',:4,:5)",
+                                  [tbl_destino, comando, comando_limpar, id_conexao, p_step_id])
+    except Exception as e:
+        raise Exception('Erro inserindo na tabela ETL_FILA.'+str(e)[0:3000])   
+     
 
 
 # -------------------------------------------------------------------------------------------
@@ -394,7 +423,7 @@ def exec_client(cfg_cliente):
 
         # Busca parametros do comando de integracao 
         if  get_type != "db_con": 
-            par_comando = monta_param_comando (engine, cnx_db, exec_comando)
+            par_comando = get_param_comando (engine, cnx_db, exec_comando)
 
         if  get_type == "copel":
             try: 
