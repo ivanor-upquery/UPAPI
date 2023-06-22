@@ -184,6 +184,7 @@ def import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_c
     try:
         with engine.connect() as con0:
             dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+            r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
     except Exception as e:
         exc_tb = sys.exc_info()
         erros='Linha:['+str(exc_tb.tb_lineno)+'] '+str(e)[0:3000]
@@ -335,7 +336,7 @@ def exec_client(cfg_cliente):
      logger.info('Início Execução ['+id_client+']')
 
      with engine.connect() as con0:
-          data_exec    = pd.read_sql_query("select * from (select id_uniq, tbl_destino, comando, comando_limpar, id_conexao, nvl(qt_tentativas,1) qt_tentativas, nvl(nr_tentativa,0) nr_tentativa from ETL_FILA where status='A' order by dt_criacao) where rownum=1",con=con0)
+          data_exec    = pd.read_sql_query("select * from (select ID_UNIQ, TBL_DESTINO, COMANDO, COMANDO_LIMPAR, ID_CONEXAO from ETL_FILA where status='A' order by dt_criacao) where rownum=1",con=con0)
           if  len(data_exec) < 1:
               return
           exec_comando = data_exec['comando'].values[0]
@@ -345,10 +346,7 @@ def exec_client(cfg_cliente):
           parbuf       = []
           parbuf.append(data_exec['id_conexao'].values[0])
           id_conexao   = data_exec['id_conexao'].values[0]
-          qt_tentativas = data_exec['qt_tentativas'].values[0]
-          nr_tentativa  = data_exec['nr_tentativa'].values[0]
 
-     nr_tentativa = str(int(nr_tentativa) + 1)  
      chk = datetime.today()
      h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
 
@@ -378,7 +376,7 @@ def exec_client(cfg_cliente):
          return
 
      with engine.connect() as con0:
-          r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='R', nr_tentativa=:nr where id_uniq=:id",id=id_uniq,nr=nr_tentativa)
+          r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='R' where id_uniq=:1",id_uniq)
 
      logger.info('Inicio: '+id_uniq+' Conn/Database: '+id_conexao+'/'+cnx_dbase)
 
@@ -427,7 +425,7 @@ def exec_client(cfg_cliente):
                  if exec_clear is not None:
                     r_del = con0.execute(exec_clear)
                  dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
-                 # r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', nr_tentativa=:nr where id_uniq=:id",id=id_uniq, nr=nr_tentativa)
+                 r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
         # Busca parametros do comando de integracao 
         if  get_type == "copel" or get_type == "celesc" or get_type == "excel" or get_type == "txt": 
@@ -458,9 +456,8 @@ def exec_client(cfg_cliente):
                 logger.info(cnx_db+' - Concluido')
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
-                raise Exception(erros)   
+                raise Exception('Erro '+ get_type.upper()+ ': '+str(e)[0:3500])   
+
 
         if  get_type == "celesc":
             try: 
@@ -485,9 +482,7 @@ def exec_client(cfg_cliente):
                 logger.info(cnx_db+' - Concluido')
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
-                raise Exception(erros)   
+                raise Exception('Erro '+ get_type.upper()+ ': '+str(e)[0:3500])   
 
 
         if  get_type == "excel" or get_type == "txt":
@@ -497,10 +492,65 @@ def exec_client(cfg_cliente):
                 os.remove(cnx_loc_file+nm_arquivo)
             except Exception as e:
                 os.remove(cnx_loc_file+nm_arquivo)
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
-                raise Exception(erros)   
+                raise Exception('Erro '+ get_type.upper()+ ': '+str(e)[0:3500])   
 
+        if  get_type == "excel_OLD" or get_type == "txt_OLD":
+
+            # --- Pega os parametros do comando -----------------------------------------------------------
+            if exec_comando is None:
+                raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.')
+            params     = exec_comando.split('|')
+            try:
+                ws_arquivo   = (params[0]).strip()
+                ws_separador = ""
+                if get_type == "txt":
+                    ws_separador = params[1]
+            except Exception as e:
+                raise Exception('Numero incorreto de parâmetros no comando ['+ str(e)[0:3500] + ']')
+
+            if ws_arquivo.find("'") != -1:
+                raise Exception('Nome do arquivo nao pode conter ASPAS.')
+
+            try:
+                # --- Lê arquivo -----------------------------------------------------------
+                engine.fast_executemany = True
+
+                if get_type == "excel":
+                    if ws_arquivo[-3:].upper() == 'XLS':
+                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='xlrd')
+                    else:     
+                        dados = pd.read_excel(cnx_loc_file+ws_arquivo, engine='openpyxl')
+                else:
+                    dados = pd.read_csv(cnx_loc_file+ws_arquivo, sep=ws_separador)
+
+                object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+                dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
+
+                # --- Exclui registros -----------------------------------------------------------
+                if exec_clear is not None:
+                    with engine.connect() as con0:
+                         r_del = con0.execute(exec_clear)
+                
+                # --- Monta as colunas da tabela a serem inseridas 
+                dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")
+                for index in range(len(tab_colunas)):
+                    if  tab_colunas[index] not in dados.columns:
+                        dados[tab_colunas[index]]=''
+                dados = dados[tab_colunas]
+
+                # --- Insere registros e atualiza status da fila -----------------------------------------------------------
+                with engine.connect() as con0:
+                     dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
+                
+                # os.rename(cnx_loc_file+ws_arquivo, cnx_loc_file+"bkp/"+ws_arquivo)
+                os.remove(cnx_loc_file+ws_arquivo)
+
+            except Exception as e:
+                erros='Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
+                logger.error(erros)
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
         if  get_type == "api_cgi": 
             try:
@@ -535,10 +585,14 @@ def exec_client(cfg_cliente):
                      object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
                      dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
                      dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
-                raise Exception(erros)   
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                erros='CGI Linha:['+str(exc_tb.tb_lineno)+'] '+str(e)[0:3000]
+                logger.error(erros)
+                with engine.connect() as con0:
+                     r_del = con0.execute(exec_clear)
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
         if  get_type == "api_linha":
             try:
@@ -614,12 +668,16 @@ def exec_client(cfg_cliente):
                      else:
                          print('final GET')
                          ws_total = ws_pagina-1
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
-                raise Exception(erros)   
-
+                #det_err  = traceback.format_exc()
+                erros='Erro API_LINHA: '+str(e)[0:3500]
+                logger.error(erros)
+                #logger.error(det_err)
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
         if  get_type == "api_omie":
             try:
@@ -668,11 +726,13 @@ def exec_client(cfg_cliente):
 
                      with engine.connect() as con0:
                           dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                          r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq) 
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
-                raise Exception(erros)   
+                erros='['+str(ws_local)+'] Erro OMIE: '+str(e)[0:3500]
+                logger.error(erros)
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
         if  get_type == "hcm_senior":
             try:
@@ -735,11 +795,13 @@ def exec_client(cfg_cliente):
                      con.close()
                      with engine.connect() as con0:
                           dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                          r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F' where id_uniq=:1",id_uniq)
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
-                raise Exception(erros)   
+                erros='Erro HCM_SENIOR: '+str(e)[0:3500]
+                logger.error(erros)
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
         if  get_type == "api_nexti":
             try:
@@ -827,13 +889,20 @@ def exec_client(cfg_cliente):
                     
                      ws_pagina += 1
 
+                # --------------- Atualiza o status da Fila -------------------------
+                with engine.connect() as con0:
+                    r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', erros=null where id_uniq=:1",id_uniq)
+
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
-                raise Exception(erros)   
+                erros='Erro ' + get_type.upper() + ' : '+str(e)[0:3500]
+                logger.error(erros)
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
         if  get_type == "api_trello":    # sem paginação # parametros 
+            ws_passo = ''
             try:
+                ws_passo = 'PARAMETROS'
                 if exec_comando is None:
                     raise Exception('Comando esta em Nulo, verifique o comando e as variaveis do comando.')
                 if len(tab_colunas) == 0:
@@ -858,6 +927,7 @@ def exec_client(cfg_cliente):
                     ws_url_params[0] = ""
 
                 # --- Deleta registros da tabela
+                ws_passo = 'DELETE'
                 if exec_clear is not None:
                     logger.info('Deletando ['+ tbl_destino + ']...')
                     with engine.connect() as con0:
@@ -866,11 +936,13 @@ def exec_client(cfg_cliente):
                 ws_count = 0
                 ws_total = len(ws_url_params)
 
+                ws_passo = 'FOR'
                 for url_param in ws_url_params: 
                     ws_count = ws_count + 1
                     # logger.info('Inserindo [' + tbl_destino + ']... (' + str(ws_count) + '/' + str(ws_total) + ')')
                     url = cnx_url + ws_url_api.replace(":1",url_param) +'?key='+cnx_api_key+'&token='+cnx_secret
                     
+                    ws_passo = 'REQUEST'
                     resp = requests.get(url)
                     data = resp.json()
                     with open("/opt/oracle/upapi/error.txt", "w") as text_file:
@@ -881,6 +953,7 @@ def exec_client(cfg_cliente):
                        raise Exception('Erro retornado pela API :' + str(data.status_code) + 'URL_API:'+ url)
  
                     # --------------- Pega as colunas e os dados para o Insert -------------------------
+                    ws_passo = 'NORMALIZE'
                     if ws_tp_reg == "full_content": 
                         dados = pd.json_normalize(data['content'])
                     elif ws_tp_reg == "full_line":
@@ -905,6 +978,7 @@ def exec_client(cfg_cliente):
                             dados[tab_colunas[index]]=''
                     dados = dados[tab_colunas]
 
+                    ws_passo = 'INSERT'
                     with engine.connect() as con0:
                          dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                          cnt = pd.read_sql_query("select count(*) as cnt from ETL_FILA where status='C' and id_uniq=:1",con=con0,params=[id_uniq])
@@ -913,30 +987,25 @@ def exec_client(cfg_cliente):
                    
                 # --------------- Atualiza o status da Fila -------------------------
                 logger.info(tbl_destino + ' - Registros inseridos [' + str(ws_count) + ']')
+                ws_passo = 'STATUS'
+                with engine.connect() as con0:
+                    r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', erros=null where id_uniq=:1",id_uniq)
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
-                raise Exception(erros)   
-
-        
-        # Atualiza o status como finalizado, se concluiu (não deu erro)
-        with engine.connect() as con0:
-            r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', nr_tentativa=:nr where id_uniq=:id",id=id_uniq,nr=nr_tentativa)
+                erros='Erro ' + get_type.upper()+'['+ ws_passo +']: ' +str(e)[0:3500]
+                logger.error(erros)
+                with engine.connect() as con0:
+                     r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
 
      except Exception as e:
         erros=str(e)[0:3000]
         logger.error(erros)
         with engine.connect() as con0:
-             status = 'E'
-             if nr_tentativa < qt_tentativas: 
-                status = 'A'
-             r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status=:status, nr_tentativa=:nr, erros=:erros where id_uniq=:id",id=id_uniq,status=status,erros=erros,nr=nr_tentativa)
-
+             r_back = con0.execute("update ETL_FILA set dt_inicio=sysdate, status='E', erros=:erros where id_uniq=:id_uniq",id_uniq=id_uniq,erros=erros)
      con0.close
      logger.info('Executado: '+tbl_destino)
   except Exception as e:
-     exc_tb = sys.exc_info()
+     exc_type, exc_obj, exc_tb = sys.exc_info()
      erros='Linha:['+str(exc_tb.tb_lineno)+'] '+str(e)[0:3000]
      logger.error(erros)
 

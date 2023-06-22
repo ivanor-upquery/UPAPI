@@ -15,11 +15,20 @@ from datetime import datetime
 import glob
 import fnmatch
 
-exec_comando = 'aaaa,bbbbb,ccccc'
-exec_comando = exec_comando.replace(",","|")
-print(exec_comando)
-comando = exec_comando.split(',')
-print(comando)
+lista1 = [0,1,2,3,4,5,6,7]
+lista2 = [0,1,2,3,4,5,6]
+
+for index in range(len(lista2), len(lista1) ):
+    print(index)
+
+#os.system("killall chrome")
+#os.system("killall chromedriver")
+
+#exec_comando = 'aaaa,bbbbb,ccccc'
+#exec_comando = exec_comando.replace(",","|")
+#print(exec_comando)
+#comando = exec_comando.split(',')
+#print(comando)
 
 
 #sourceFile = open('/opt/oracle/upapi/logs/teste2.log', 'a')
@@ -90,8 +99,35 @@ print(comando)
 #files=fnmatch.filter(os.listdir('/opt/oracle/upapi/testes'), '')
 #print(files)
 
-#nm_arquivo   = '/opt/oracle/upapi/testes/relatorio_dados_controle_empreiteiras.csv'
-#dados = pd.read_csv(nm_arquivo, sep=";", header=None, low_memory=False, error_bad_lines=False)
+tab_colunas = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura']
+
+nm_arquivo   = '/opt/oracle/upapi/testes/relatorio_dados_leitura.csv'
+# dados = pd.read_csv(nm_arquivo, sep=";", header=None, low_memory=False, error_bad_lines=False)
+dados = pd.read_csv(nm_arquivo, sep=";", header=None, encoding = "ISO-8859-1", low_memory=False, error_bad_lines=False)
+
+print('a1')
+print(len(dados.columns))
+print(len(tab_colunas))
+print(dados.columns)
+print(tab_colunas)
+
+if len(dados.columns) > len(tab_colunas):
+    print('a2')
+    for index in range(len(tab_colunas), len(dados.columns)):
+        print(index)
+        dados.drop(dados.columns[len(tab_colunas)], axis=1, inplace=True)
+
+print('a3')
+print(len(tab_colunas))
+print((dados.columns))
+
+#
+#print('a2')
+#print((dados.columns[59]))
+#dados.columns[dados.columns[59]]=''
+#print((dados.columns))
+#print(dados.columns["59"])
+
 
 #dados = pd.read_excel(ws_arquivo, engine='openpyxl', header=None)
 #dados.columns = dados.loc[2].str.strip().str.lower().str.replace(".","_")
