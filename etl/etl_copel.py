@@ -45,8 +45,10 @@ def f_copel(p_id_client, p_cnx, p_usuario, p_senha, p_pasta, p_arquivo, p_data_i
         
         f_log('Abrindo site........')
         driver.get("https://www.copel.com/lis/")
-        time.sleep(10)
+        time.sleep(20)
         
+        f_log (p_usuario)
+
         driver.find_element_by_class_name("lbl_campo_maiusculo").send_keys(p_usuario)
         driver.find_element_by_class_name("lbl_campo").send_keys(p_senha)
         time.sleep(2)

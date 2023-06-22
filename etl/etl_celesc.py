@@ -73,7 +73,7 @@ def f_celesc(p_id_client, p_cnx, p_usuario, p_senha, p_pasta, p_arquivo, p_data_
         for locais in lista:
             if  locais != '0':
                 dh_i = datetime.now()
-                f_log('Local: '+ locais + ' - Periodo: '+p_data_i+' ate '+p_data_f)
+                f_log('Local: '+ locais + ' - Periodo: '+p_data_i+' ate '+p_data_f + ' - INICIO')
 
                 if os.path.isfile(arquivo_download):
                     os.remove(arquivo_download)

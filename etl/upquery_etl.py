@@ -25,8 +25,9 @@ import configparser as ConfigParser
 import os
 import csv
 import fnmatch
-import etl_copel 
-import etl_celesc
+import etl_conces   # importa arquivo concessionárias (COPEL, CELESC) 
+import etl_copel     # importa arquivo concessionárias (COPEL, CELESC) 
+
 
 # -------------------------------------------------------------------------------------------
 # Formato Parametro 
@@ -434,7 +435,8 @@ def exec_client(cfg_cliente):
                 
                 logger.info(cnx_db+' - Baixando...')
                 try: 
-                    etl_copel.f_copel(id_client, cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
+                    etl_conces.f_conces(id_client, cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
+                    #etl_copel.f_copel(id_client, cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
                     if not(os.path.isfile(cnx_loc_file+'/'+nm_arquivo)):
                         raise Exception('Arquivo não gerado.')   
                 except Exception as e:
@@ -459,7 +461,7 @@ def exec_client(cfg_cliente):
                 dt_f       = par_comando['DT_FINAL']
                 
                 try: 
-                    etl_celesc.f_celesc(id_client, cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
+                    etl_conces.f_conces(id_client, cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
                     if not(os.path.isfile(cnx_loc_file+'/'+nm_arquivo)):
                         raise Exception('Arquivo não gerado.')   
                 except Exception as e:
