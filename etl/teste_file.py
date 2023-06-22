@@ -15,11 +15,11 @@ from datetime import datetime
 import glob
 import fnmatch
 
-comando = 'aaa'
-lista_comando    = comando.split('|'); 
-lista_comando[0] = 'XXXXX'
-comando = '|'.join(lista_comando)
-print (comando)
+exec_comando = 'aaaa,bbbbb,ccccc'
+exec_comando = exec_comando.replace(",","|")
+print(exec_comando)
+comando = exec_comando.split(',')
+print(comando)
 
 
 #sourceFile = open('/opt/oracle/upapi/logs/teste2.log', 'a')

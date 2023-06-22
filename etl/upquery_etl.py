@@ -26,7 +26,6 @@ import os
 import csv
 import fnmatch
 import etl_conces   # importa arquivo concessionárias (COPEL, CELESC) 
-import etl_copel     # importa arquivo concessionárias (COPEL, CELESC) 
 
 
 # -------------------------------------------------------------------------------------------
