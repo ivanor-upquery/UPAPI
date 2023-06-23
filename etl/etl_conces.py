@@ -184,6 +184,10 @@ def f_conces(p_id_client, p_cnx, p_usuario, p_senha, p_pasta, p_arquivo, p_data_
         
 
     except Exception as e:
+        try:
+            driver.close()
+        except:
+            saida=0            
         f_log('ERRO: '+str(e)[0:3000])
         raise Exception(str(e)[0:3000])   
 

@@ -10,16 +10,43 @@ import os
 import csv
 import glob
 import fnmatch
-from datetime import datetime
+from datetime import datetime, timedelta
+
 
 import glob
 import fnmatch
 
-lista1 = [0,1,2,3,4,5,6,7]
-lista2 = [0,1,2,3,4,5,6]
+fonte_host='demo.upquery.com'
+fonte_port=1521
+fonte_serv='controle'
+fonte_user='dwu'
+fonte_pass='s82sksw9qskw0'
 
-for index in range(len(lista2), len(lista1) ):
-    print(index)
+
+dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
+engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
+
+with engine.connect() as con0:
+   temp_col = pd.read_sql_query('select count(*) from CTB_ACOES_EXEC',con=con0)
+
+#con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
+#cur = con.cursor()
+
+# cur.execute("select BLOB_CONTENT from TMP_DOCS where check_id = '2E9AJ700WD0Z2102ZK0L03036O0TW002Z2T0Q' ")
+# row = cur.fetchone()
+# blob = row[0].read()
+# blob_content = blob.decode('latin-1')
+# parbuf = []
+# cur.close()
+# con.close()
+
+
+#------------------------------------------------------------------------------
+# now = datetime.today() - timedelta(days=365)
+# chk = datetime.today()
+# h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
+# dt_referencia = now.strftime('%d.%m.%Y')
+# print('Periodo => '+dt_referencia)
 
 #os.system("killall chrome")
 #os.system("killall chromedriver")
@@ -99,27 +126,26 @@ for index in range(len(lista2), len(lista1) ):
 #files=fnmatch.filter(os.listdir('/opt/oracle/upapi/testes'), '')
 #print(files)
 
-tab_colunas = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura']
-
-nm_arquivo   = '/opt/oracle/upapi/testes/relatorio_dados_leitura.csv'
+#tab_colunas = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura']
+#nm_arquivo   = '/opt/oracle/upapi/testes/relatorio_dados_leitura.csv'
 # dados = pd.read_csv(nm_arquivo, sep=";", header=None, low_memory=False, error_bad_lines=False)
-dados = pd.read_csv(nm_arquivo, sep=";", header=None, encoding = "ISO-8859-1", low_memory=False, error_bad_lines=False)
+#dados = pd.read_csv(nm_arquivo, sep=";", header=None, encoding = "ISO-8859-1", low_memory=False, error_bad_lines=False)
 
-print('a1')
-print(len(dados.columns))
-print(len(tab_colunas))
-print(dados.columns)
-print(tab_colunas)
-
-if len(dados.columns) > len(tab_colunas):
-    print('a2')
-    for index in range(len(tab_colunas), len(dados.columns)):
-        print(index)
-        dados.drop(dados.columns[len(tab_colunas)], axis=1, inplace=True)
-
-print('a3')
-print(len(tab_colunas))
-print((dados.columns))
+# print('a1')
+# print(len(dados.columns))
+# print(len(tab_colunas))
+# print(dados.columns)
+# print(tab_colunas)
+# 
+# if len(dados.columns) > len(tab_colunas):
+#     print('a2')
+#     for index in range(len(tab_colunas), len(dados.columns)):
+#         print(index)
+#         dados.drop(dados.columns[len(tab_colunas)], axis=1, inplace=True)
+# 
+# print('a3')
+# print(len(tab_colunas))
+# print((dados.columns))
 
 #
 #print('a2')
