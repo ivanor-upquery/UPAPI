@@ -66,8 +66,17 @@ print(dados)
 colunas = list(dados.columns)
 dados.columns = colunas
 dados.columns = dados.columns.str.strip().str.lower()
+
 dados = dados.astype(object).where(pd.notnull(dados),None)
+all_columns = list(dados)
+
+object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+
+dados = dados.astype(object).where(pd.notnull(dados),None)
+all_columns = list(dados)
 dados.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+
 object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
 dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
 
