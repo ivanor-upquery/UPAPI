@@ -51,7 +51,7 @@ destino = create_engine('oracle+cx_oracle://%s:%s@%s' % (cnx_user, cnx_pass, dsn
 
 colunas = ['CD_EMPRESA','CD_COR','DS_COR','CD_GRUPO_COR','PANTONE','TIPO_COR','RGB','INATIVO','ID_APP','ID_COR']
 
-dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",")
+dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",", dtype=str)
 
 if  'cd_empresa' not in dados.columns:
     dados.insert(loc=0, column='cd_empresa', value=id_cliente)
@@ -60,8 +60,7 @@ ref_local = data_local.strftime('%Y-%m-%d %H:%M:%S')
 dados.insert(loc=0, column='codigo_empresa',      value=id_cliente)
 dados.insert(loc=0, column='dt_upquery_registro', value=ref_local)
 
-print(dados.columns)
-
+dados.info()
 print(dados)
 
 dados.columns = colunas
@@ -70,6 +69,9 @@ dados = dados.astype(object).where(pd.notnull(dados),None)
 dados.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
 dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+
+print(dados.columns)
+print(dtyp)
 
 with destino.connect() as con_destino:
     con_destino.execute('''alter session set NLS_DATE_FORMAT=\'YYYY-MM-DD HH24:MI:SS\'''')
