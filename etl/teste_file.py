@@ -23,6 +23,7 @@ fonte_serv='controle'
 fonte_user='dwu'
 fonte_pass='s82sksw9qskw0'
 
+id_cliente = '000000096'
 
 dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
 engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
@@ -51,6 +52,13 @@ destino = create_engine('oracle+cx_oracle://%s:%s@%s' % (cnx_user, cnx_pass, dsn
 colunas = ['CD_EMPRESA','CD_COR','DS_COR','CD_GRUPO_COR','PANTONE','TIPO_COR','RGB','INATIVO','ID_APP','ID_COR']
 
 dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",")
+
+if  'cd_empresa' not in dados.columns:
+    dados.insert(loc=0, column='cd_empresa', value=id_cliente)
+data_local = datetime.today()
+ref_local = data_local.strftime('%Y-%m-%d %H:%M:%S')
+dados.insert(loc=0, column='codigo_empresa',      value=id_cliente)
+dados.insert(loc=0, column='dt_upquery_registro', value=ref_local)
 
 print(dados.columns)
 
