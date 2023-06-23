@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from requests.structures import CaseInsensitiveDict
 from time import gmtime, strftime
 import configparser as ConfigParser
+import io
 import os
 import csv
 import glob
@@ -25,21 +26,47 @@ fonte_pass='s82sksw9qskw0'
 
 dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
 engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
+con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
+cur = con.cursor()
 
-with engine.connect() as con0:
-   temp_col = pd.read_sql_query('select count(*) from CTB_ACOES_EXEC',con=con0)
+cur.execute("select BLOB_CONTENT from TMP_DOCS where check_id = '2E9AJ700WD0Z2102ZK0L03036O0TW002Z2T0Q' ")
+row = cur.fetchone()
+blob = row[0].read()
+blob_content = blob.decode('latin-1')
+parbuf = []
+cur.close()
+con.close()
 
-#con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
-#cur = con.cursor()
 
-# cur.execute("select BLOB_CONTENT from TMP_DOCS where check_id = '2E9AJ700WD0Z2102ZK0L03036O0TW002Z2T0Q' ")
-# row = cur.fetchone()
-# blob = row[0].read()
-# blob_content = blob.decode('latin-1')
-# parbuf = []
-# cur.close()
-# con.close()
+print('Iniciado   ')
+cnx_host    = 'cloud.upquery.com'
+cnx_port    = 1521
+cnx_user    = 'dwu'
+cnx_pass    = '3433cajubr4200'
+cnx_service = 'cajubr'
 
+dsn_destino = cx_Oracle.makedsn(cnx_host,port=cnx_port,service_name=cnx_service)
+destino = create_engine('oracle+cx_oracle://%s:%s@%s' % (cnx_user, cnx_pass, dsn_destino))
+
+colunas = ['CD_EMPRESA','CD_COR','DS_COR','CD_GRUPO_COR','PANTONE','TIPO_COR','RGB','INATIVO','ID_APP','ID_COR']
+
+dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",")
+
+print(dados.columns)
+
+print(dados)
+
+dados.columns = colunas
+dados.columns = dados.columns.str.strip().str.lower()
+dados = dados.astype(object).where(pd.notnull(dados),None)
+dados.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+
+with destino.connect() as con_destino:
+    con_destino.execute('''alter session set NLS_DATE_FORMAT=\'YYYY-MM-DD HH24:MI:SS\'''')
+    con_destino.execute('''alter session set NLS_NUMERIC_CHARACTERS =\'.,\'''')
+    dados.to_sql(name='ETL_TESTE_AGENTE_I',con=con_destino, if_exists='append', index=False, chunksize=50000, dtype=dtyp)
 
 #------------------------------------------------------------------------------
 # now = datetime.today() - timedelta(days=365)
