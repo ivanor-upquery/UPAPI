@@ -143,6 +143,9 @@ def f_conces(p_id_client, p_cnx, p_usuario, p_senha, p_pasta, p_arquivo, p_data_
 
     arquivo = p_pasta + p_arquivo
 
+    # os.system("killall chrome")
+    # os.system("killall chromedriver")
+
     try: 
         f_log('INICIO ['+arquivo+']')
 
@@ -176,7 +179,9 @@ def f_conces(p_id_client, p_cnx, p_usuario, p_senha, p_pasta, p_arquivo, p_data_
         if p_cnx == 'CELESC':
             f_celesc(driver, arquivo, p_data_i, p_data_f)
 
+        driver.close()
         f_log('FIM ['+arquivo+']')
+        
 
     except Exception as e:
         f_log('ERRO: '+str(e)[0:3000])
