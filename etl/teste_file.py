@@ -1,17 +1,15 @@
-import pandas as pd
-import sqlalchemy as sa
 import cx_Oracle
+import csv
+from io import StringIO
+import numpy as np
+import pandas as pd
+import io
+import sqlalchemy as sa
+import datetime
+from datetime import datetime, timedelta
+
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from requests.structures import CaseInsensitiveDict
-from time import gmtime, strftime
-import configparser as ConfigParser
-import io
-import os
-import csv
-import glob
-import fnmatch
-from datetime import datetime, timedelta
 
 
 import glob
@@ -77,8 +75,8 @@ dados = dados.astype(object).where(pd.notnull(dados),None)
 all_columns = list(dados)
 dados.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 
-object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+#object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+#dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
 
 print(dados.columns)
 print(dtyp)
