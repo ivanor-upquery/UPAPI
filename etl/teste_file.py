@@ -30,7 +30,7 @@ engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, 
 con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
 cur = con.cursor()
 
-cur.execute("select BLOB_CONTENT from TMP_DOCS where check_id = '2E9AJ700WD0Z2102ZK0L03036O0TW002Z2T0Q' and id_cliente = '000000096' ") 
+cur.execute("select BLOB_CONTENT from TMP_DOCS where check_id = 'F-168199594/20230620160658_000000096_2E9AJ700WD0Z2102ZK0L03036O0TW002Z2T0Q_0000000962010.txt' and id_cliente = '000000096' ") 
 row = cur.fetchone()
 blob = row[0].read()
 blob_content = blob.decode('latin-1')
