@@ -7,6 +7,7 @@ import io
 import sqlalchemy as sa
 import datetime
 from datetime import datetime, timedelta
+import time
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -47,19 +48,34 @@ cnx_service = 'cajubr'
 dsn_destino = cx_Oracle.makedsn(cnx_host,port=cnx_port,service_name=cnx_service)
 destino = create_engine('oracle+cx_oracle://%s:%s@%s' % (cnx_user, cnx_pass, dsn_destino))
 
-colunas = ['CD_EMPRESA','CD_COR','DS_COR','CD_GRUPO_COR','PANTONE','TIPO_COR','RGB','INATIVO','ID_APP','ID_COR']
+# Busca COLUNAS da tabela de insert dos dados 
+get_colunas = "select column_name from user_tab_columns where table_name = :1 and column_name not in ('CODIGO_EMPRESA','DT_UPQUERY_REGISTRO','ANO_AGENDAMENTO','MES_AGENDAMENTO') order by column_id"
+parcol = []
+colunas = []
+ws_try = 10
+parcol.append('ETL_TESTE_AGENTE_I')
+with destino.connect() as con_destino:              
+     while(ws_try > 1):
+         try:
+            data_con = pd.read_sql_query(get_colunas,con=con_destino,params=parcol)
+            for c_column in data_con['column_name']:
+                if  c_column:
+                    colunas.append(c_column.lower())
+            ws_try = 0
+         except:
+            time.sleep(1)
+            ws_try-=1
+     con_destino.close()
 
-dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",", dtype=str)
+dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",") # , dtype=str)
 
 if  'cd_empresa' not in dados.columns:
     dados.insert(loc=0, column='cd_empresa', value=id_cliente)
+
 data_local = datetime.today()
 ref_local = data_local.strftime('%Y-%m-%d %H:%M:%S')
 dados.insert(loc=0, column='codigo_empresa',      value=id_cliente)
 dados.insert(loc=0, column='dt_upquery_registro', value=ref_local)
-
-dados.info()
-print(dados)
 
 colunas = list(dados.columns)
 dados.columns = colunas
@@ -68,6 +84,8 @@ dados.columns = dados.columns.str.strip().str.lower()
 dados = dados.astype(object).where(pd.notnull(dados),None)
 all_columns = list(dados)
 
+dados.info()
+
 object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
 dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
 
@@ -75,11 +93,9 @@ dados = dados.astype(object).where(pd.notnull(dados),None)
 all_columns = list(dados)
 dados.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 
-#object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-#dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
 
-print(dados.columns)
-print(dtyp)
 
 with destino.connect() as con_destino:
     con_destino.execute('''alter session set NLS_DATE_FORMAT=\'YYYY-MM-DD HH24:MI:SS\'''')
