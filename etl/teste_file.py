@@ -63,6 +63,7 @@ dados.insert(loc=0, column='dt_upquery_registro', value=ref_local)
 dados.info()
 print(dados)
 
+colunas = list(dados.columns)
 dados.columns = colunas
 dados.columns = dados.columns.str.strip().str.lower()
 dados = dados.astype(object).where(pd.notnull(dados),None)
