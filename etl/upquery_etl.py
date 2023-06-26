@@ -74,6 +74,19 @@ def get_param_comando (engine, cnx_db, exec_comando):
     par_comando = pd.Series(lista_vl, index=lista_cd)
     return par_comando 
 
+
+def monta_colunas_dados (dados, tab_colunas, dtyp):
+    dados.columns  = dados.columns.str.strip().str.lower().str.replace(".","_")
+    dados = dados.rename(columns=lambda x: x.split('.')[-1])
+    object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+    dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+   
+    for index in range(len(tab_colunas)):
+        if  tab_colunas[index] not in dados.columns:
+            dados[tab_colunas[index]]=''
+    dados = dados[tab_colunas]
+
+
 # -------------------------------------------------------------------------------------------
 #  Monta os parametros do comando
 # -------------------------------------------------------------------------------------------
@@ -430,7 +443,7 @@ def exec_client(cfg_cliente):
                  # r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', nr_tentativa=:nr where id_uniq=:id",id=id_uniq, nr=nr_tentativa)
 
         # Busca parametros do comando de integracao 
-        if  get_type == "copel" or get_type == "celesc" or get_type == "excel" or get_type == "txt": 
+        if  get_type == "api_useall" or get_type == "copel" or get_type == "celesc" or get_type == "excel" or get_type == "txt" : 
             par_comando = get_param_comando (engine, cnx_db, exec_comando)
 
         if  get_type == "copel":
@@ -497,6 +510,47 @@ def exec_client(cfg_cliente):
                 os.remove(cnx_loc_file+nm_arquivo)
             except Exception as e:
                 os.remove(cnx_loc_file+nm_arquivo)
+                exc_tb = sys.exc_info()
+                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
+                raise Exception(erros)   
+
+        if  get_type == "api_useall":
+            try:
+                reg_ident = par_comando['REG_IDENT']
+                filter    = par_comando['FILTER']
+
+                headers = CaseInsensitiveDict()                
+                headers["Use-ClientId"]     = cnx_api_key
+                headers["Use-ClientSecret"] = cnx_secret
+
+                url = cnx_url+'?identificacao=='+str(reg_ident)
+                if filter is not None:
+                    url = url + '&FiltrosSqlQuery='+str(filter)
+
+                resp = requests.get(url, headers=headers)
+                data = resp.json()
+
+                with open("/opt/oracle/upapi/error"+str(ws_pagina)+".txt", "w") as text_file:
+                    text_file.write(str(data))
+
+                if 'Success' in data and data['Success'] == 'false':
+                    raise Exception('Erro retornado pela API '+ data['Message'])  
+                dados = pd.json_normalize(data)
+
+                logger.info(dados.columns)
+                dtyp = []
+                monta_colunas_dados (dados, tab_colunas, dtyp)
+                logger.info(dados.columns)
+
+                logger.info('Deletando ['+ tbl_destino + ']...')
+                with engine.connect() as con0:
+                     r_del = con0.execute(exec_clear)
+
+                logger.info('Inserindo [' + tbl_destino + ']...')
+                with engine.connect() as con0:
+                    dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+
+            except Exception as e:
                 exc_tb = sys.exc_info()
                 erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
                 raise Exception(erros)   
@@ -955,8 +1009,8 @@ logger = logging.getLogger()
 chk = datetime.today()
 h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
 
-drivers  = ['ODBC', 'FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL','CELESC'] 
-drv_nsql = ['API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL','CELESC']   # Drivers não SQL
+drivers  = ['ODBC', 'FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL','CELESC','API_USEALL'] 
+drv_nsql = ['API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL','CELESC','API_USEALL']   # Drivers não SQL
 
 logger.info('Serviço Iniciado [UPQUERY_ETL]')
 
