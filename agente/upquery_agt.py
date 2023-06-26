@@ -185,7 +185,11 @@ def exec_etl(p_cd_cliente):
              colunas.remove('cd_empresa')
 
          # Converte CSV do blob em dados do insert 
-         dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",")
+         if p_cd_cliente == "000000098":
+            dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",", dtype=str)  # teste com str para um cliente Finatto
+         else:
+            dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",")
+
          if  tabela_criterio == 'SCHEDULER':
              dados.insert(loc=0, column='mes_agendamento', value=mes_agendamento)
              dados.insert(loc=0, column='ano_agendamento', value=ano_agendamento)
