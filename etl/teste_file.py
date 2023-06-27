@@ -16,91 +16,105 @@ from sqlalchemy.exc import SQLAlchemyError
 import glob
 import fnmatch
 
-fonte_host='demo.upquery.com'
-fonte_port=1521
-fonte_serv='controle'
-fonte_user='dwu'
-fonte_pass='s82sksw9qskw0'
+def func(D): 
 
-id_cliente = '000000096'
+    
+    print(D)
+    D1 = {'a':10, 'b':20, 'c':30} 
+    print(D1)
+    D = dict(D1)
+    print(D)
 
-dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
-engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
-con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
-cur = con.cursor()
-
-cur.execute("select BLOB_CONTENT from TMP_DOCS where name = 'F-168199594/20230620160658_000000096_2E9AJ700WD0Z2102ZK0L03036O0TW002Z2T0Q_0000000962010.txt' and id_cliente = '000000096' ") 
-row = cur.fetchone()
-blob = row[0].read()
-blob_content = blob.decode('latin-1')
-parbuf = []
-cur.close()
-con.close()
+D = {'a':1, 'b':2, 'c':3} 
+func(D) 
+print(D)
 
 
-print('Iniciado   ')
-cnx_host    = 'cloud.upquery.com'
-cnx_port    = 1521
-cnx_user    = 'dwu'
-cnx_pass    = '3433cajubr4200'
-cnx_service = 'cajubr'
-
-dsn_destino = cx_Oracle.makedsn(cnx_host,port=cnx_port,service_name=cnx_service)
-destino = create_engine('oracle+cx_oracle://%s:%s@%s' % (cnx_user, cnx_pass, dsn_destino))
-
-# Busca COLUNAS da tabela de insert dos dados 
-get_colunas = "select column_name from user_tab_columns where table_name = :1 and column_name not in ('CODIGO_EMPRESA','DT_UPQUERY_REGISTRO','ANO_AGENDAMENTO','MES_AGENDAMENTO') order by column_id"
-parcol = []
-colunas = []
-ws_try = 10
-parcol.append('ETL_TESTE_AGENTE_I')
-with destino.connect() as con_destino:              
-     while(ws_try > 1):
-         try:
-            data_con = pd.read_sql_query(get_colunas,con=con_destino,params=parcol)
-            for c_column in data_con['column_name']:
-                if  c_column:
-                    colunas.append(c_column.lower())
-            ws_try = 0
-         except:
-            time.sleep(1)
-            ws_try-=1
-     con_destino.close()
-
-dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",") # , dtype=str)
-
-if  'cd_empresa' not in dados.columns:
-    dados.insert(loc=0, column='cd_empresa', value=id_cliente)
-
-data_local = datetime.today()
-ref_local = data_local.strftime('%Y-%m-%d %H:%M:%S')
-dados.insert(loc=0, column='codigo_empresa',      value=id_cliente)
-dados.insert(loc=0, column='dt_upquery_registro', value=ref_local)
-
-colunas = list(dados.columns)
-dados.columns = colunas
-dados.columns = dados.columns.str.strip().str.lower()
-
-dados = dados.astype(object).where(pd.notnull(dados),None)
-all_columns = list(dados)
-
-dados.info()
-
-object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-
-dados = dados.astype(object).where(pd.notnull(dados),None)
-all_columns = list(dados)
-dados.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-
-object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-
-
-with destino.connect() as con_destino:
-    con_destino.execute('''alter session set NLS_DATE_FORMAT=\'YYYY-MM-DD HH24:MI:SS\'''')
-    con_destino.execute('''alter session set NLS_NUMERIC_CHARACTERS =\'.,\'''')
-    dados.to_sql(name='ETL_TESTE_AGENTE_I',con=con_destino, if_exists='append', index=False, chunksize=50000, dtype=dtyp)
+#    fonte_host='demo.upquery.com'
+#    fonte_port=1521
+#    fonte_serv='controle'
+#    fonte_user='dwu'
+#    fonte_pass='s82sksw9qskw0'
+#    
+#    id_cliente = '000000096'
+#    
+#    dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
+#    engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
+#    con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
+#    cur = con.cursor()
+#    
+#    cur.execute("select BLOB_CONTENT from TMP_DOCS where name = 'F-168199594/20230620160658_000000096_2E9AJ700WD0Z2102ZK0L03036O0TW002Z2T0Q_0000000962010.txt' and id_cliente = '000000096' ") 
+#    row = cur.fetchone()
+#    blob = row[0].read()
+#    blob_content = blob.decode('latin-1')
+#    parbuf = []
+#    cur.close()
+#    con.close()
+#    
+#    
+#    print('Iniciado   ')
+#    cnx_host    = 'cloud.upquery.com'
+#    cnx_port    = 1521
+#    cnx_user    = 'dwu'
+#    cnx_pass    = '3433cajubr4200'
+#    cnx_service = 'cajubr'
+#    
+#    dsn_destino = cx_Oracle.makedsn(cnx_host,port=cnx_port,service_name=cnx_service)
+#    destino = create_engine('oracle+cx_oracle://%s:%s@%s' % (cnx_user, cnx_pass, dsn_destino))
+#    
+#    # Busca COLUNAS da tabela de insert dos dados 
+#    get_colunas = "select column_name from user_tab_columns where table_name = :1 and column_name not in ('CODIGO_EMPRESA','DT_UPQUERY_REGISTRO','ANO_AGENDAMENTO','MES_AGENDAMENTO') order by column_id"
+#    parcol = []
+#    colunas = []
+#    ws_try = 10
+#    parcol.append('ETL_TESTE_AGENTE_I')
+#    with destino.connect() as con_destino:              
+#         while(ws_try > 1):
+#             try:
+#                data_con = pd.read_sql_query(get_colunas,con=con_destino,params=parcol)
+#                for c_column in data_con['column_name']:
+#                    if  c_column:
+#                        colunas.append(c_column.lower())
+#                ws_try = 0
+#             except:
+#                time.sleep(1)
+#                ws_try-=1
+#         con_destino.close()
+#    
+#    dados=pd.read_csv(io.StringIO(str(blob_content)),names=colunas, header=None, sep=",") # , dtype=str)
+#    
+#    if  'cd_empresa' not in dados.columns:
+#        dados.insert(loc=0, column='cd_empresa', value=id_cliente)
+#    
+#    data_local = datetime.today()
+#    ref_local = data_local.strftime('%Y-%m-%d %H:%M:%S')
+#    dados.insert(loc=0, column='codigo_empresa',      value=id_cliente)
+#    dados.insert(loc=0, column='dt_upquery_registro', value=ref_local)
+#    
+#    colunas = list(dados.columns)
+#    dados.columns = colunas
+#    dados.columns = dados.columns.str.strip().str.lower()
+#    
+#    dados = dados.astype(object).where(pd.notnull(dados),None)
+#    all_columns = list(dados)
+#    
+#    dados.info()
+#    
+#    object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+#    dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+#    
+#    dados = dados.astype(object).where(pd.notnull(dados),None)
+#    all_columns = list(dados)
+#    dados.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+#    
+#    object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+#    dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+#    
+#    
+#    with destino.connect() as con_destino:
+#        con_destino.execute('''alter session set NLS_DATE_FORMAT=\'YYYY-MM-DD HH24:MI:SS\'''')
+#        con_destino.execute('''alter session set NLS_NUMERIC_CHARACTERS =\'.,\'''')
+#        dados.to_sql(name='ETL_TESTE_AGENTE_I',con=con_destino, if_exists='append', index=False, chunksize=50000, dtype=dtyp)
 
 #------------------------------------------------------------------------------
 # now = datetime.today() - timedelta(days=365)

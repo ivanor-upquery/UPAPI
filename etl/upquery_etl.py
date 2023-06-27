@@ -74,17 +74,27 @@ def get_param_comando (engine, cnx_db, exec_comando):
     par_comando = pd.Series(lista_vl, index=lista_cd)
     return par_comando 
 
-
-def monta_colunas_dados (dados, tab_colunas, dtyp):
-    dados.columns  = dados.columns.str.strip().str.lower().str.replace(".","_")
-    dados = dados.rename(columns=lambda x: x.split('.')[-1])
+def monta_type_colunas (dados):
     object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
     dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-   
+    return dtyp
+
+def monta_colunas_dados (dados, tab_colunas):
+    
+    dados.columns  = dados.columns.str.strip().str.lower().str.replace(".","_")
+    dados = dados.rename(columns=lambda x: x.split('.')[-1])
+    dados = dados.astype(object).where(pd.notnull(dados),None)  # altera colunas None para Null
+    # dados.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+
     for index in range(len(tab_colunas)):
         if  tab_colunas[index] not in dados.columns:
             dados[tab_colunas[index]]=''
     dados = dados[tab_colunas]
+
+def insere_dados_oracle(engine, dados, tbl_destino, dtyp):
+    logger.info('Inserindo [' + tbl_destino + ']...')
+    with engine.connect() as con0:
+        dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
 
 
 # -------------------------------------------------------------------------------------------
@@ -186,7 +196,10 @@ def import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_c
 
     # -- Exclui registros da tabela de destino -----------------------------------------------------------
     if exec_clear is not None:
+        logger.info(cnx_db+' - Deletando...')
         with engine.connect() as con0:
+            logger.info('a1')
+            logger.info(exec_clear)
             r_del = con0.execute(exec_clear)
     
     # -- Define o tipo das colunas do insert para VARCHAR quando forem do tipo object -----------------------------------------------------------
@@ -194,12 +207,12 @@ def import_file(engine, id_client, get_type, cnx_db, id_uniq, tbl_destino, tab_c
     dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
 
     # -- Insere registros e atualiza status da fila -----------------------------------------------------------
-    try:
+    try:    
+        logger.info(cnx_db+' - Inserindo...')
         with engine.connect() as con0:
             dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
     except Exception as e:
-        exc_tb = sys.exc_info()
-        erros='Linha:['+str(exc_tb.tb_lineno)+'] '+str(e)[0:3000]
+        erros=str(e)[0:3000]
         print(erros)
         raise Exception(erros)   
 
@@ -455,13 +468,11 @@ def exec_client(cfg_cliente):
                 logger.info(cnx_db+' - Baixando...')
                 try: 
                     etl_conces.f_conces(id_client, cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
-                    #etl_copel.f_copel(id_client, cnx_db, cnx_user, cnx_pass, cnx_loc_file, nm_arquivo, dt_i, dt_f)
                     if not(os.path.isfile(cnx_loc_file+'/'+nm_arquivo)):
                         raise Exception('Arquivo não gerado.')   
                 except Exception as e:
                     raise Exception('Erro gerando arquivo:'+str(e)[0:3500])                                       
 
-                logger.info(cnx_db+' - Inserindo...')
                 try: 
                     import_file(engine, id_client, 'txt', cnx_db, id_uniq, tbl_destino, tab_colunas, cnx_loc_file, par_comando, exec_clear)
                     os.remove(cnx_loc_file+nm_arquivo)
@@ -471,8 +482,7 @@ def exec_client(cfg_cliente):
                 logger.info(cnx_db+' - Concluido')
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
+                erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 raise Exception(erros)   
 
         if  get_type == "celesc":
@@ -498,8 +508,7 @@ def exec_client(cfg_cliente):
                 logger.info(cnx_db+' - Concluido')
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
+                erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 raise Exception(erros)   
 
 
@@ -510,8 +519,7 @@ def exec_client(cfg_cliente):
                 os.remove(cnx_loc_file+nm_arquivo)
             except Exception as e:
                 os.remove(cnx_loc_file+nm_arquivo)
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
+                erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 raise Exception(erros)   
 
         if  get_type == "api_useall":
@@ -523,36 +531,42 @@ def exec_client(cfg_cliente):
                 headers["Use-ClientId"]     = cnx_api_key
                 headers["Use-ClientSecret"] = cnx_secret
 
-                url = cnx_url+'?identificacao=='+str(reg_ident)
+                url = cnx_url+'?identificacao='+str(reg_ident)
                 if filter is not None:
                     url = url + '&FiltrosSqlQuery='+str(filter)
 
                 resp = requests.get(url, headers=headers)
                 data = resp.json()
 
-                with open("/opt/oracle/upapi/error"+str(ws_pagina)+".txt", "w") as text_file:
-                    text_file.write(str(data))
+                #with open("/opt/oracle/upapi/error.txt", "w") as text_file:
+                #    text_file.write(str(data))
 
-                if 'Success' in data and data['Success'] == 'false':
-                    raise Exception('Erro retornado pela API '+ data['Message'])  
+                if 'Success' in data:
+                    if str(data['Success']).upper() == 'FALSE':
+                        raise Exception('Erro retornado pela API: '+ data['Message'])  
+                
                 dados = pd.json_normalize(data)
+                monta_colunas_dados (dados, tab_colunas)
+                dtyp = monta_type_colunas(dados)
+                
+                logger.info('x0')
+                logger.info(dtyp )
+                logger.info(dados)
 
-                logger.info(dados.columns)
-                dtyp = []
-                monta_colunas_dados (dados, tab_colunas, dtyp)
-                logger.info(dados.columns)
+                # exclui_dados_oracle(engine, tbl_destino, dtyp):
 
-                logger.info('Deletando ['+ tbl_destino + ']...')
-                with engine.connect() as con0:
-                     r_del = con0.execute(exec_clear)
+                if exec_clear is not None:
+                    logger.info('Deletando ['+ tbl_destino + ']...')
+                    with engine.connect() as con0:
+                        r_del = con0.execute(exec_clear)
 
-                logger.info('Inserindo [' + tbl_destino + ']...')
-                with engine.connect() as con0:
-                    dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                insere_dados_oracle(engine, dados, tbl_destino, dtyp)
+                #logger.info('Inserindo [' + tbl_destino + ']...')
+                #with engine.connect() as con0:
+                #    dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
+                erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 raise Exception(erros)   
 
 
