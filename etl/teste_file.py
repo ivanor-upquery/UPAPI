@@ -16,18 +16,19 @@ from sqlalchemy.exc import SQLAlchemyError
 import glob
 import fnmatch
 
-def func(D): 
+# for index in reversed(range(5)): 
+#     print(index)
 
-    
-    print(D)
-    D1 = {'a':10, 'b':20, 'c':30} 
-    print(D1)
-    D = dict(D1)
-    print(D)
-
-D = {'a':1, 'b':2, 'c':3} 
-func(D) 
-print(D)
+#  def func(D): 
+#      print(D)
+#      D1 = {'a':10, 'b':20, 'c':30} 
+#      print(D1)
+#      D = dict(D1)
+#      print(D)
+#  
+#  D = {'a':1, 'b':2, 'c':3} 
+#  func(D) 
+#  print(D)
 
 
 #    fonte_host='demo.upquery.com'
@@ -201,26 +202,23 @@ print(D)
 #files=fnmatch.filter(os.listdir('/opt/oracle/upapi/testes'), '')
 #print(files)
 
-#tab_colunas = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura']
-#nm_arquivo   = '/opt/oracle/upapi/testes/relatorio_dados_leitura.csv'
+tab_colunas = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura']
+#tab_colunas2 = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura','aaa','bbbb','ccccc']
+nm_arquivo   = '/opt/oracle/upapi/testes/relatorio_dados_leitura.csv'
 # dados = pd.read_csv(nm_arquivo, sep=";", header=None, low_memory=False, error_bad_lines=False)
-#dados = pd.read_csv(nm_arquivo, sep=";", header=None, encoding = "ISO-8859-1", low_memory=False, error_bad_lines=False)
+dados = pd.read_csv(nm_arquivo, sep=";", header=None, encoding = "ISO-8859-1", low_memory=False, error_bad_lines=False)
 
-# print('a1')
-# print(len(dados.columns))
-# print(len(tab_colunas))
-# print(dados.columns)
-# print(tab_colunas)
-# 
-# if len(dados.columns) > len(tab_colunas):
-#     print('a2')
-#     for index in range(len(tab_colunas), len(dados.columns)):
-#         print(index)
-#         dados.drop(dados.columns[len(tab_colunas)], axis=1, inplace=True)
-# 
-# print('a3')
-# print(len(tab_colunas))
-# print((dados.columns))
+print('a1')
+print(len(tab_colunas))
+print(len(dados.columns))
+
+for index in reversed(range(len(tab_colunas), len(dados.columns))):
+    print(index)
+    dados.drop(dados.columns[index], axis=1, inplace=True)
+
+print('a3')
+print(len(tab_colunas))
+print(len(dados.columns))
 
 #
 #print('a2')

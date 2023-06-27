@@ -27,6 +27,9 @@ import csv
 import fnmatch
 import etl_conces   # importa arquivo concessionárias (COPEL, CELESC) 
 
+#with open("/opt/oracle/upapi/error.txt", "w") as text_file:
+#    text_file.write(str(data))
+
 
 # -------------------------------------------------------------------------------------------
 # Formato Parametro 
@@ -74,27 +77,50 @@ def get_param_comando (engine, cnx_db, exec_comando):
     par_comando = pd.Series(lista_vl, index=lista_cd)
     return par_comando 
 
-def monta_type_colunas (dados):
-    object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-    dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
-    return dtyp
 
-def monta_colunas_dados (dados, tab_colunas):
+def insere_dados_cliente(engine, dados, tbl_destino, tab_colunas, exec_clear, origem_coluna ):
+    try: 
+        if origem_coluna == 'TABELA':
+            # Se a quantidade de colunas do DADOS for maior que a da tabela, exclui as colunas excedentes do DADOS
+            if len(dados.columns) > len(tab_colunas):
+                for index in reversed(range(len(tab_colunas), len(dados.columns))):
+                    dados.drop(dados.columns[index], axis=1, inplace=True)
+            dados.columns  = tab_colunas
+        else: 
+            dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")    # substitui . por _
+
+        # retira dos dados coluna que não existem na tabela 
+        for index in reversed(range(len(dados.columns))):           
+            if dados.columns[index] not in tab_colunas:
+                dados.drop(dados.columns[index], axis=1, inplace=True)
+
+        if len(dados.columns) <= 0:
+            raise Exception('Nenhuma coluna dos dados corresponde a colunas da tabela, verifique o conteudo retornado e a tabela de destino.')   
+
+        dados = dados.astype(object).where(pd.notnull(dados),None)  # altera conteudos com None para Null
+
+        object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+        dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+    except Exception as e:
+        erros = 'Erro obtendo colunas ['+ origem_coluna+']: '+str(e)[0:3500]
+        raise Exception(erros)   
+
+    try: 
+        if exec_clear is not None:
+            logger.info('Deletando ['+ tbl_destino + ']...')
+            with engine.connect() as con0:
+                r_del = con0.execute(exec_clear)
+    except Exception as e:
+        erros = 'Erro excluindo: '+str(e)[0:3500]
+        raise Exception(erros)   
     
-    dados.columns  = dados.columns.str.strip().str.lower().str.replace(".","_")
-    dados = dados.rename(columns=lambda x: x.split('.')[-1])
-    dados = dados.astype(object).where(pd.notnull(dados),None)  # altera colunas None para Null
-    # dados.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-
-    for index in range(len(tab_colunas)):
-        if  tab_colunas[index] not in dados.columns:
-            dados[tab_colunas[index]]=''
-    dados = dados[tab_colunas]
-
-def insere_dados_oracle(engine, dados, tbl_destino, dtyp):
-    logger.info('Inserindo [' + tbl_destino + ']...')
-    with engine.connect() as con0:
-        dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+    try:
+        logger.info('Inserindo [' + tbl_destino + ']...')
+        with engine.connect() as con0:
+            dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+    except Exception as e:
+        erros = 'Erro inserindo: '+str(e)[0:3500]
+        raise Exception(erros)   
 
 
 # -------------------------------------------------------------------------------------------
@@ -537,33 +563,15 @@ def exec_client(cfg_cliente):
 
                 resp = requests.get(url, headers=headers)
                 data = resp.json()
-
-                #with open("/opt/oracle/upapi/error.txt", "w") as text_file:
-                #    text_file.write(str(data))
-
+                with open("/opt/oracle/upapi/error.txt", "w") as text_file:
+                    text_file.write(str(data))
+                
                 if 'Success' in data:
                     if str(data['Success']).upper() == 'FALSE':
                         raise Exception('Erro retornado pela API: '+ data['Message'])  
-                
+
                 dados = pd.json_normalize(data)
-                monta_colunas_dados (dados, tab_colunas)
-                dtyp = monta_type_colunas(dados)
-                
-                logger.info('x0')
-                logger.info(dtyp )
-                logger.info(dados)
-
-                # exclui_dados_oracle(engine, tbl_destino, dtyp):
-
-                if exec_clear is not None:
-                    logger.info('Deletando ['+ tbl_destino + ']...')
-                    with engine.connect() as con0:
-                        r_del = con0.execute(exec_clear)
-
-                insere_dados_oracle(engine, dados, tbl_destino, dtyp)
-                #logger.info('Inserindo [' + tbl_destino + ']...')
-                #with engine.connect() as con0:
-                #    dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                insere_dados_cliente(engine, dados, tbl_destino, tab_colunas, exec_clear, ' JSON')
 
             except Exception as e:
                 erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
