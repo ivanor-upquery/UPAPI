@@ -31,11 +31,32 @@ url = url + '&FiltrosSqlQuery=[{Nome:"ANOMES",Valor:"202306"}]'
 resp = requests.get(url, headers=headers)
 data = resp.json()
 
-data[1]['CODIGO_REVENDA'] = 1.00
+#data2 = ({key: str(value) for key, value in data.items()})
+#print(data2)
+
+#for song in json_object:
+#     # now song is a dictionary
+#     for attribute, value in song.items():
+#         value = str(value) 
+
+#for iterator in loaded:
+#    print(iterator) # , ":", loaded[iterator])
+
+# data2 = data.maps(lambda x: {key: str(value) for key, value in x.items()})
+
+# print(data2)
+
+# data.apply(lambda x: {key: str(value) for key, value in x.items()})
+
+data[1]['CODIGO_REVENDA'] = str(1.00)
 print(data[1]['CODIGO_REVENDA'])
 
 dados = pd.DataFrame(data)
-# print(dados) 
+
+dados.apply(lambda x: {key: str(value) for key, value in x.items()})
+
+print(dados) 
+dados.info()
 
 # dados['CODIGO_FABRICANTE'] = dados['CODIGO_FABRICANTE'].astype(str)
 # dados.astype({'NUMERO': 'str'}).dtypes
@@ -48,8 +69,8 @@ for index in reversed(range(len(dados.columns))):
 #dados = dados.astype('str')
 #dados = dados.astype({'CODIGO_REVENDA': 'str'})
 
-print(dados) 
-dados.info()
+#print(dados) 
+#dados.info()
 
 object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
 dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}

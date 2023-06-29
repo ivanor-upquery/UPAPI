@@ -567,15 +567,10 @@ def exec_client(cfg_cliente):
 
                 resp = requests.get(url, headers=headers)
                 data = resp.json()
-                
-                with open("/opt/oracle/upapi/error.txt", "w") as text_file:
-                    text_file.write(str(data))
 
                 if 'Success' in data:
                     if str(data['Success']).upper() == 'FALSE':
                         raise Exception('Erro retornado pela API: '+ data['Message'])  
-
-                # teste ivanor data.apply(lambda x: {key: str(value) for key, value in x.items()})
 
                 dados = pd.json_normalize(data)
 
