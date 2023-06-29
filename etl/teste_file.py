@@ -9,13 +9,65 @@ import datetime
 from datetime import datetime, timedelta
 import time
 
+import json
+import requests
+
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 
+from requests.structures import CaseInsensitiveDict
 
 import glob
 import fnmatch
 
+headers = CaseInsensitiveDict()                
+headers["Use-ClientId"]     = '33b5ecf0d365431686953d234051d2ee'
+headers["Use-ClientSecret"] = 'qzQI6mZUzcvChNTZdO8='
+
+cnx_url = 'https://query.useallcloud.com.br/api/RelatorioExterno/ExecutarExportarJson' 
+url = cnx_url+'?identificacao=09249662000174_m2_geral_api_notas_fiscais_de_entrada__setup'
+url = url + '&FiltrosSqlQuery=[{Nome:"ANOMES",Valor:"202306"}]'
+
+resp = requests.get(url, headers=headers)
+data = resp.json()
+
+data[1]['CODIGO_REVENDA'] = 1.00
+print(data[1]['CODIGO_REVENDA'])
+
+dados = pd.DataFrame(data)
+# print(dados) 
+
+# dados['CODIGO_FABRICANTE'] = dados['CODIGO_FABRICANTE'].astype(str)
+# dados.astype({'NUMERO': 'str'}).dtypes
+
+colunas_lower = ['codigo_revenda','codigo_fabricante', 'numero']
+for index in reversed(range(len(dados.columns))):           
+    if dados.columns[index].lower() not in colunas_lower:
+        dados.drop(dados.columns[index], axis=1, inplace=True)
+
+#dados = dados.astype('str')
+#dados = dados.astype({'CODIGO_REVENDA': 'str'})
+
+print(dados) 
+dados.info()
+
+object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+
+# dsn  = cx_Oracle.makedsn('localhost',port=1521,service_name='DESENV')
+# engine = create_engine('oracle+cx_oracle://%s:%s@%s' % ('dwup2', 'dwup2', dsn))
+# with engine.connect() as con0:
+#    dados.to_sql(name='etl_teste_useall',con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+
+#with open("/opt/oracle/upapi/error.txt", "r") as text_file:
+#    data = text_file.read()
+
+# data = '[{"DEBCRED":0,"HISTORICO_CTB":"Movto 1012","IDCONTACTB":87589,"IDHISTORICOCTB":4793,"IDLOTECTB":2736398,"IDLOTECTBLANCTO":9342012,"IDTENANT":143,"VALOR_CTB":312.8,"DATA":"2201-12-10T00:00:00","ORIGEM":1005,"IDORIGEM":2465534,"IDFILIAL":333,"IDEMPRESA":211,"IDLOTECTBLANCTOCDC":497747,"IDCONTACDC":2827,"HISTORICO_CDC":"Movto 1012","VALOR_CDC":312.8,"PERC":100.0},{"DEBCRED":1,"HISTORICO_CTB":"Movto BOLETOS DIA 10","IDCONTACTB":87650,"IDHISTORICOCTB":4793,"IDLOTECTB":2668287,"IDLOTECTBLANCTO":9180923,"IDTENANT":143,"VALOR_CTB":7630.04,"DATA":"2108-12-10T00:00:00","ORIGEM":1005,"IDORIGEM":2426674,"IDFILIAL":333,"IDEMPRESA":211,"IDLOTECTBLANCTOCDC":458276,"IDCONTACDC":2720,"HISTORICO_CDC":"Movto BOLETOS DIA 10","VALOR_CDC":2585.4,"PERC":33.88}]' 
+
+#dados = pd.json_normalize(data)
+
+# print(data)
+ 
 # for index in reversed(range(5)): 
 #     print(index)
 
@@ -202,23 +254,28 @@ import fnmatch
 #files=fnmatch.filter(os.listdir('/opt/oracle/upapi/testes'), '')
 #print(files)
 
-tab_colunas = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura']
+# tab_colunas = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura']
+# 
+# print(tab_colunas)
+# teste = [w.upper() for w in tab_colunas]
+# print(teste)
+
 #tab_colunas2 = ['ds_concessionaria','ds_empreiteira','ds_equipe','ds_usuario','mesano_referente_livro','dt_leitura','hr_leitura','cd_uc','cd_cidade','ds_cidade','tp_local','cd_etapa','cd_livro','status_releitura','cd_equipamento','ds_especificacao','ds_mensagem','ds_mensagem_aux','ds_obs','ds_foto','cd_fat_campo','cd_impressao_comunicado','ds_entrega_fatura','aaa','bbbb','ccccc']
-nm_arquivo   = '/opt/oracle/upapi/testes/relatorio_dados_leitura.csv'
+#nm_arquivo   = '/opt/oracle/upapi/testes/relatorio_dados_leitura.csv'
 # dados = pd.read_csv(nm_arquivo, sep=";", header=None, low_memory=False, error_bad_lines=False)
-dados = pd.read_csv(nm_arquivo, sep=";", header=None, encoding = "ISO-8859-1", low_memory=False, error_bad_lines=False)
+#dados = pd.read_csv(nm_arquivo, sep=";", header=None, encoding = "ISO-8859-1", low_memory=False, error_bad_lines=False)
 
-print('a1')
-print(len(tab_colunas))
-print(len(dados.columns))
-
-for index in reversed(range(len(tab_colunas), len(dados.columns))):
-    print(index)
-    dados.drop(dados.columns[index], axis=1, inplace=True)
-
-print('a3')
-print(len(tab_colunas))
-print(len(dados.columns))
+#print('a1')
+#print(len(tab_colunas))
+#print(len(dados.columns))
+#
+#for index in reversed(range(len(tab_colunas), len(dados.columns))):
+#    print(index)
+#    dados.drop(dados.columns[index], axis=1, inplace=True)
+#
+#print('a3')
+#print(len(tab_colunas))
+#print(len(dados.columns))
 
 #
 #print('a2')

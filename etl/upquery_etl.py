@@ -78,26 +78,30 @@ def get_param_comando (engine, cnx_db, exec_comando):
     return par_comando 
 
 
-def insere_dados_cliente(engine, dados, tbl_destino, tab_colunas, exec_clear, origem_coluna ):
+def insere_dados_cliente(engine, dados, tbl_destino, colunas, exec_clear, origem_coluna ):
     try: 
         if origem_coluna == 'TABELA':
             # Se a quantidade de colunas do DADOS for maior que a da tabela, exclui as colunas excedentes do DADOS
-            if len(dados.columns) > len(tab_colunas):
-                for index in reversed(range(len(tab_colunas), len(dados.columns))):
+            if len(dados.columns) > len(colunas):
+                for index in reversed(range(len(colunas), len(dados.columns))):
                     dados.drop(dados.columns[index], axis=1, inplace=True)
-            dados.columns  = tab_colunas
+            
+            dados.columns  = colunas
         else: 
             dados.columns = dados.columns.str.strip().str.lower().str.replace(".","_")    # substitui . por _
 
-        # retira dos dados coluna que não existem na tabela 
+        # retira dos dados colunas que não existem na tabela 
+        colunas_lower = [item.lower() for item in colunas]
         for index in reversed(range(len(dados.columns))):           
-            if dados.columns[index] not in tab_colunas:
+            if dados.columns[index].lower() not in colunas_lower:
                 dados.drop(dados.columns[index], axis=1, inplace=True)
 
         if len(dados.columns) <= 0:
             raise Exception('Nenhuma coluna dos dados corresponde a colunas da tabela, verifique o conteudo retornado e a tabela de destino.')   
 
         dados = dados.astype(object).where(pd.notnull(dados),None)  # altera conteudos com None para Null
+        # dados = dados.astype(str)                                   # Altera todas as colunas para tipo STR
+        # dados = dados.astype(str).where(pd.notnull(dados),None)     # altera conteudos com None para Null
 
         object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
         dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
@@ -564,12 +568,18 @@ def exec_client(cfg_cliente):
                 resp = requests.get(url, headers=headers)
                 data = resp.json()
                 
+                with open("/opt/oracle/upapi/error.txt", "w") as text_file:
+                    text_file.write(str(data))
+
                 if 'Success' in data:
                     if str(data['Success']).upper() == 'FALSE':
                         raise Exception('Erro retornado pela API: '+ data['Message'])  
 
+                # teste ivanor data.apply(lambda x: {key: str(value) for key, value in x.items()})
+
                 dados = pd.json_normalize(data)
-                insere_dados_cliente(engine, dados, tbl_destino, tab_colunas, exec_clear, 'TABELA')
+
+                insere_dados_cliente(engine, dados, tbl_destino, colunas, exec_clear, 'TABELA')
 
             except Exception as e:
                 erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
