@@ -20,16 +20,59 @@ from requests.structures import CaseInsensitiveDict
 import glob
 import fnmatch
 
-headers = CaseInsensitiveDict()                
-headers["Use-ClientId"]     = '33b5ecf0d365431686953d234051d2ee'
-headers["Use-ClientSecret"] = 'qzQI6mZUzcvChNTZdO8='
+print('a0') 
 
-cnx_url = 'https://query.useallcloud.com.br/api/RelatorioExterno/ExecutarExportarJson' 
-url = cnx_url+'?identificacao=09249662000174_m2_geral_api_notas_fiscais_de_entrada__setup'
-url = url + '&FiltrosSqlQuery=[{Nome:"ANOMES",Valor:"202306"}]'
+# import redshift_connector
+import psycopg2
 
-resp = requests.get(url, headers=headers)
-data = resp.json()
+print('a0.1') 
+#conn = redshift_connector.connect(
+conn = psycopg2.connect(
+     host='gpm.092883988318.us-east-1.redshift-serverless.amazonaws.com',
+     database='setup',
+     port=5439,
+     user='nwsetup',
+     password='624nWikKMNch8Xqm4V05L5BFamS0ntil'
+  )
+  
+print('a1')  
+# Create a Cursor object
+cursor = conn.cursor()
+
+print('a2')  
+# Query a table using the Cursor
+cursor.execute("select * from book")
+
+print('a3')  
+
+
+###  trello labels 
+###   url = 'https://api.trello.com/1/boards/6073862f2a35942fb1daed64/cards?key=725b22fff37061095d0fd2b2fae50457&token=9173e7ef079e26906bc0e2fe8faba68f20687bd38189ed191cdd3d94da9d37e6'
+###   resp = requests.get(url)
+###   data = resp.json()
+###   dados = pd.json_normalize(data)
+###   dados = pd.DataFrame(data).explode('labels').reset_index(drop=True)
+###   dados = pd.json_normalize(dados['labels'].dropna(),errors='ignore').add_prefix("it_")
+###   for item in dados.items():
+###       print(item)
+
+# print(dados)
+
+#for idx, obj in enumerate(dados):
+#    print(obj)
+
+
+
+#   headers = CaseInsensitiveDict()                
+#   headers["Use-ClientId"]     = '33b5ecf0d365431686953d234051d2ee'
+#   headers["Use-ClientSecret"] = 'qzQI6mZUzcvChNTZdO8='
+#   
+#   cnx_url = 'https://query.useallcloud.com.br/api/RelatorioExterno/ExecutarExportarJson' 
+#   url = cnx_url+'?identificacao=09249662000174_m2_geral_api_notas_fiscais_de_entrada__setup'
+#   url = url + '&FiltrosSqlQuery=[{Nome:"ANOMES",Valor:"202306"}]'
+#   
+#   resp = requests.get(url, headers=headers)
+#   data = resp.json()
 
 #data2 = ({key: str(value) for key, value in data.items()})
 #print(data2)
@@ -48,32 +91,28 @@ data = resp.json()
 
 # data.apply(lambda x: {key: str(value) for key, value in x.items()})
 
-data[1]['CODIGO_REVENDA'] = str(1.00)
-print(data[1]['CODIGO_REVENDA'])
-
-dados = pd.DataFrame(data)
-
-dados.apply(lambda x: {key: str(value) for key, value in x.items()})
-
-print(dados) 
-dados.info()
+# data[1]['CODIGO_REVENDA'] = str(1.00)
+# print(data[1]['CODIGO_REVENDA'])
+# dados = pd.DataFrame(data)
+# dados.apply(lambda x: {key: str(value) for key, value in x.items()})
+# print(dados) 
+# dados.info()
 
 # dados['CODIGO_FABRICANTE'] = dados['CODIGO_FABRICANTE'].astype(str)
 # dados.astype({'NUMERO': 'str'}).dtypes
-
-colunas_lower = ['codigo_revenda','codigo_fabricante', 'numero']
-for index in reversed(range(len(dados.columns))):           
-    if dados.columns[index].lower() not in colunas_lower:
-        dados.drop(dados.columns[index], axis=1, inplace=True)
-
-#dados = dados.astype('str')
-#dados = dados.astype({'CODIGO_REVENDA': 'str'})
-
-#print(dados) 
-#dados.info()
-
-object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
-dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
+##    colunas_lower = ['codigo_revenda','codigo_fabricante', 'numero']
+##    for index in reversed(range(len(dados.columns))):           
+##        if dados.columns[index].lower() not in colunas_lower:
+##            dados.drop(dados.columns[index], axis=1, inplace=True)
+##    
+##    #dados = dados.astype('str')
+##    #dados = dados.astype({'CODIGO_REVENDA': 'str'})
+##    
+##    #print(dados) 
+##    #dados.info()
+##    
+##    object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+##    dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
 
 # dsn  = cx_Oracle.makedsn('localhost',port=1521,service_name='DESENV')
 # engine = create_engine('oracle+cx_oracle://%s:%s@%s' % ('dwup2', 'dwup2', dsn))

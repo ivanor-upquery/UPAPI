@@ -994,9 +994,7 @@ def exec_client(cfg_cliente):
                 logger.info(tbl_destino + ' - Registros inseridos [' + str(ws_count) + ']')
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
-                raise Exception(erros)   
+                raise Exception(str(e)[0:3500])   
 
         
         # Atualiza o status como finalizado, se concluiu (não deu erro)
@@ -1004,7 +1002,13 @@ def exec_client(cfg_cliente):
             r_back = con0.execute("update ETL_FILA set dt_final=sysdate, status='F', nr_tentativa=:nr where id_uniq=:id",id=id_uniq,nr=nr_tentativa)
 
      except Exception as e:
-        erros=str(e)[0:3000]
+        try:
+            exc_tb = sys.exc_info()
+            nr_linha = exc_tb.tb_lineno
+        except:
+            nr_linha = 0
+
+        erros = 'Erro '+ get_type.upper()+ ' [linha='+str(nr_linha)+']: '+str(e)[0:3000]
         logger.error(erros)
         with engine.connect() as con0:
              status = 'E'
