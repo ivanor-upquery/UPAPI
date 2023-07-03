@@ -108,6 +108,7 @@ def exec_etl(p_cd_cliente):
          parbuf.append(row[1])
          parbuf.append(row[2])
          parbuf.append(row[3])
+         parbuf.append('')        # erro 
          tabela_criterio = row[4]
          db_origem       = row[5]
          id_cliente      = row[1]
@@ -258,8 +259,9 @@ def exec_etl(p_cd_cliente):
             status='ERRO'
             erros='Linha:['+str(nr_linha)+'] '+str(e)[0:3000]
             logger.error(erros)
+            parbuf[4] = erros
             with engine.connect() as con0:
-                r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
+                r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate, erro = :4 where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
 
          connection = engine.raw_connection()
          cursor = connection.cursor()
