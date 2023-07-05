@@ -222,33 +222,27 @@ def exec_etl(p_cd_cliente):
             object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
             dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
 
-            # Insere os dados e atualiza o status da TMP_DOCS 
             status = 'OK'
+            
+            # Delete e insert dos registros  
             try:
                 with destino.connect() as con_destino:
                     con_destino.execute('''alter session set NLS_DATE_FORMAT=\'YYYY-MM-DD HH24:MI:SS\'''')
                     con_destino.execute('''alter session set NLS_NUMERIC_CHARACTERS =\'.,\'''')
                     con_destino.execute(cmd_delete)
                     dados.to_sql(name=nm_tabela,con=con_destino, if_exists='append', index=False, chunksize=50000, dtype=dtyp)
-                    with engine.connect() as con0:
-                        r_back = con0.execute("update TMP_DOCS SET status = 'END', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
+            except Exception as e:
+                erros='Erro deletenado/inserindo registros: '+str(e)[0:3000]
+                raise Exception(erros) 
+
+            # Finaliza TMP_DOCS 
+            try:
+                with engine.connect() as con0:
+                    r_back = con0.execute("update TMP_DOCS SET status = 'END', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
             except Exception as e:
                 erros='Erro atualizando status da TMP_DOCS para END: '+str(e)[0:3000]
                 raise Exception(erros) 
-                #exc_type, exc_obj, exc_tb = sys.exc_info()
-                #status='ERRO'
-                #erros='Linha:['+str(exc_tb.tb_lineno)+'] '+str(e)[0:3000]
-                #logger.error(erros)
-                #with engine.connect() as con0:
-                #    r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
-
-            #connection = engine.raw_connection()
-            #cursor = connection.cursor()
-            #cursor.callproc("lock_status", [p_cd_cliente,'I'])
-            #cursor.close()
-            #connection.commit()
-            #logger.info('Finalizado ['+p_cd_cliente+'] - ['+tabela_transp+'] - ['+status+']')
-
+ 
          except Exception as e:
             try:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -260,8 +254,11 @@ def exec_etl(p_cd_cliente):
             logger.error(erros)
             parbuf.append(erros)
             with engine.connect() as con0:
-                r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate, erro = :4 where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
-                r_back = con0.execute("update LOCK_CLIENTE set status = 'I', dt_last = sysdate where id_cliente = :1", p_cd_cliente)
+                try:
+                    r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate, erro = :4 where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
+                    # r_back = con0.execute("update LOCK_CLIENTE set status = 'I', dt_last = sysdate where id_cliente = :1", p_cd_cliente)
+                except Exception as e:
+                    logger.error('Erro atualizado TMP_DOCS para ERRO'+str(e)[0:3000])
 
          connection = engine.raw_connection()
          cursor = connection.cursor()
