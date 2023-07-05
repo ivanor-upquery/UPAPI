@@ -258,7 +258,7 @@ def exec_etl(p_cd_cliente):
                     r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate, erro = :4 where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
                     # r_back = con0.execute("update LOCK_CLIENTE set status = 'I', dt_last = sysdate where id_cliente = :1", p_cd_cliente)
                 except Exception as e:
-                    logger.error('Erro atualizado TMP_DOCS para ERRO'+str(e)[0:3000])
+                    logger.error('Erro atualizado TMP_DOCS para ERRO: '+str(e)[0:3000])
 
          connection = engine.raw_connection()
          cursor = connection.cursor()
