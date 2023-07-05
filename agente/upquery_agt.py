@@ -26,11 +26,19 @@ def get_par(dados,parametro,defval):
            retorno = defval
     return retorno
 
-fonte_host='demo.upquery.com'
+#fonte_host='demo.upquery.com'
+#fonte_port=1521
+#  fonte_serv='controle'
+#  fonte_user='dwu'
+#  fonte_pass='s82sksw9qskw0'
+
+fonte_host='localhost'
 fonte_port=1521
-fonte_serv='controle'
-fonte_user='dwu'
-fonte_pass='s82sksw9qskw0'
+fonte_serv='desenv'
+fonte_user='dwup2'
+fonte_pass='dwup2'
+
+
 
 warnings.filterwarnings("ignore")
 
@@ -252,13 +260,11 @@ def exec_etl(p_cd_cliente):
             status='ERRO'
             erros='Linha:['+str(nr_linha)+'] '+str(e)[0:3000]
             logger.error(erros)
-            parbuf.append(erros)
-            with engine.connect() as con0:
-                try:
-                    r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate, erro = :4 where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
-                    # r_back = con0.execute("update LOCK_CLIENTE set status = 'I', dt_last = sysdate where id_cliente = :1", p_cd_cliente)
-                except Exception as e:
-                    logger.error('Erro atualizado TMP_DOCS para ERRO: '+str(e)[0:3000])
+            try:
+                with engine.connect() as con0:
+                    r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate, erro = :p0 where id_cliente = :p1 and check_id = :p2 and id_acao = :p3", p0=erros,p1=parbuf[0],p2=parbuf[1],p3=parbuf[2] )
+            except Exception as e:
+                logger.error('Erro atualizado TMP_DOCS para ERRO: '+str(e)[0:3000])
 
          connection = engine.raw_connection()
          cursor = connection.cursor()
@@ -274,8 +280,8 @@ while True:
 
      if  len(threading.enumerate()) < 11:
          with engine.connect() as con0:
-              #cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente not in ('000000113','000000096') and id_cliente in ('000000128','000000078','000000037') ",con=con0)
-              cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente not in ('000000113','000000096') ",con=con0)
+              # teste ivanor - cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente not in ('000000113','000000096') ",con=con0)
+              cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente in ('000000102') ",con=con0)
               con0.close
 
          for ind in range(0, len(cliente_status)):
