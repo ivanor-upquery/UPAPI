@@ -1,6 +1,7 @@
 import pyodbc
 import fdb
 import psycopg2
+import redshift_connector
 import pymysql
 import pymssql
 import json
@@ -467,6 +468,8 @@ def exec_client(cfg_cliente):
         if  cnx_db == "ORACLE":
             dsn_origem = cx_Oracle.makedsn(cnx_host, cnx_port, cnx_service)
             con = cx_Oracle.connect(user=cnx_user,password=cnx_pass, dsn=dsn_origem)
+        if  cnx_db == "AWS":
+            con = redshift_connector.connect(host=cnx_host,port=cnx_port,database=cnx_dbase,user=cnx_user,password=cnx_pass)
         if  cnx_db in drv_nsql:            
             get_type = cnx_db.lower()
 
@@ -1038,7 +1041,7 @@ logger = logging.getLogger()
 chk = datetime.today()
 h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
 
-drivers  = ['ODBC', 'FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL','CELESC','API_USEALL'] 
+drivers  = ['ODBC', 'FIREBIRD','POSTGRESQL','MYSQL','MSSQL','ORACLE','API_CGI','API_OMIE','HCM_SENIOR','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL','CELESC','API_USEALL','AWS'] 
 drv_nsql = ['API_CGI','API_OMIE','HCM_SENIOR','API_LINHA','API_NEXTI','EXCEL','TXT','API_TRELLO','COPEL','CELESC','API_USEALL']   # Drivers não SQL
 
 logger.info('Serviço Iniciado [UPQUERY_ETL]')
