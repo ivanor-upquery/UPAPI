@@ -26,17 +26,17 @@ def get_par(dados,parametro,defval):
            retorno = defval
     return retorno
 
-#fonte_host='demo.upquery.com'
-#fonte_port=1521
-#  fonte_serv='controle'
-#  fonte_user='dwu'
-#  fonte_pass='s82sksw9qskw0'
-
-fonte_host='localhost'
+fonte_host='demo.upquery.com'
 fonte_port=1521
-fonte_serv='desenv'
-fonte_user='dwup2'
-fonte_pass='dwup2'
+fonte_serv='controle'
+fonte_user='dwu'
+fonte_pass='s82sksw9qskw0'
+
+#fonte_host='localhost'
+#fonte_port=1521
+#fonte_serv='desenv'
+#fonte_user='dwup2'
+#fonte_pass='dwup2'
 
 
 
@@ -280,8 +280,8 @@ while True:
 
      if  len(threading.enumerate()) < 11:
          with engine.connect() as con0:
-              # teste ivanor - cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente not in ('000000113','000000096') ",con=con0)
-              cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente in ('000000102') ",con=con0)
+              cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente not in ('000000113','000000096') ",con=con0)
+              # cliente_status=pd.read_sql_query("select id_cliente, status from LOCK_CLIENTE where status='I' and id_cliente in ('000000102') ",con=con0)
               con0.close
 
          for ind in range(0, len(cliente_status)):
