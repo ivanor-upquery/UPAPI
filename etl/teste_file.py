@@ -19,31 +19,24 @@ from requests.structures import CaseInsensitiveDict
 
 import glob
 import fnmatch
+import os
 
-print('a0') 
+import subprocess
+cmd = 'ps ax |grep -v grep |grep upquery_agt.py' 
+# output     = subprocess.check_output("ps ax |grep -v grep |grep upquery_agt.py", shell=True)
+# getVersion =  subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout
+# version =  getVersion.read()
+# print(str(version))
+# 
+# if str(version).find('upquery_etl.py') != -1:
+#     print('achou')
 
-# import redshift_connector
-import psycopg2
+returned_value = subprocess.call(cmd, shell=True)  # returns the exit code in unix
+print(returned_value)
 
-print('a0.1') 
-#conn = redshift_connector.connect(
-conn = psycopg2.connect(
-     host='gpm.092883988318.us-east-1.redshift-serverless.amazonaws.com',
-     database='setup',
-     port=5439,
-     user='nwsetup',
-     password='624nWikKMNch8Xqm4V05L5BFamS0ntil'
-  )
-  
-print('a1')  
-# Create a Cursor object
-cursor = conn.cursor()
 
-print('a2')  
-# Query a table using the Cursor
-cursor.execute("select * from book")
 
-print('a3')  
+
 
 
 ###  trello labels 
