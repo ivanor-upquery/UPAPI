@@ -147,8 +147,10 @@ while True:
                       fonte_pass = config[section].get('password','')
                       fonte_serv = config[section].get('servicename','')
                       fonte_port = config[section].get('port','1521')
+                      logger.info('a1:' )
                       dsn = cx_Oracle.makedsn(fonte_host,port=fonte_port,service_name=fonte_serv)
                       engine = create_engine('oracle+cx_oracle://%s:%s@%s' % (fonte_user, fonte_pass, dsn))
+                      logger.info('a2' + fonte_host + '-'+fonte_user+'-'+fonte_pass+'-'+fonte_serv+'-'+fonte_port)
                       try:
                           with engine.connect() as con0:
                                data_cnt=pd.read_sql_query("select count(*) as cnt from BI_REPORT_FILA where status='A'",con=con0)
