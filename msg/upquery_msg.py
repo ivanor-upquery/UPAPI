@@ -75,9 +75,7 @@ def up_sender(p_subject, p_body, p_sender_email, p_receiver_email, p_smtp_server
          encoders.encode_base64(part)
          part.add_header("Content-Disposition", f"attachment; filename= {filename}",)
      if  p_tp_conteudo == 'HTML':
-         logger.info('aaaa1')
          PdfContent = pdfkit.from_string(p_blob_content, options={'page-size':'A4', 'dpi':400} )
-         logger.info('aaaa2')
          message.attach(conteudo)
          filename = "report.pdf"
          part = MIMEBase("application", "octet-stream")
