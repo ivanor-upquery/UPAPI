@@ -187,17 +187,7 @@ while True:
             con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
             cur = con.cursor()
             parbuf = []
-<<<<<<< HEAD
-            if  section not in ['DESENV']:
-                parbuf.append('rel_obj_66449753230427033406_rvfwh8any5639e_4.html')
-            else: 
-                parbuf.append(nm_conteudo)
-                
-=======
-            # parbuf.append(nm_conteudo)
-
-            parbuf.append('rel_obj_66449753230427033406_rvfwh8any5639e_4.html')
->>>>>>> 65bd8378dd7adad7c55b32b43eb27efdd2765536
+            parbuf.append(nm_conteudo)
             cur.execute("select BLOB_CONTENT from tab_documentos where name = :b1", parbuf)
             row = cur.fetchone()
 
