@@ -75,7 +75,7 @@ def up_sender(p_subject, p_body, p_sender_email, p_receiver_email, p_smtp_server
          encoders.encode_base64(part)
          part.add_header("Content-Disposition", f"attachment; filename= {filename}",)
      if  p_tp_conteudo == 'HTML':
-         PdfContent = pdfkit.from_string(p_blob_content, options={'page-size':'A4', 'dpi':400})
+         PdfContent = pdfkit.from_string(p_blob_content, options={'page-size':'A4', 'dpi':400, 'enable-local-file-access': None})
          message.attach(conteudo)
          filename = "report.pdf"
          part = MIMEBase("application", "octet-stream")
@@ -185,7 +185,9 @@ while True:
             con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
             cur = con.cursor()
             parbuf = []
-            parbuf.append(nm_conteudo)
+            # parbuf.append(nm_conteudo)
+
+            parbuf.append('REL_OBJ_66449753230427033406_rvfwH8ANY5639e_4.html')
             cur.execute("select BLOB_CONTENT from tab_documentos where name = :b1", parbuf)
             row = cur.fetchone()
 
