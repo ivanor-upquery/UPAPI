@@ -187,7 +187,7 @@ while True:
             parbuf = []
             # parbuf.append(nm_conteudo)
 
-            parbuf.append('REL_OBJ_66449753230427033406_rvfwH8ANY5639e_4.html')
+            parbuf.append('rel_obj_66449753230427033406_rvfwh8any5639e_4.html')
             cur.execute("select BLOB_CONTENT from tab_documentos where name = :b1", parbuf)
             row = cur.fetchone()
 
