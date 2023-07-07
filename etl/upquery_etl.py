@@ -618,8 +618,7 @@ def exec_client(cfg_cliente):
                      dtyp = {c:sa.types.VARCHAR(dados[c].astype('str').str.len().max()) for c in object_columns}
                      dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
+                erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 raise Exception(erros)   
 
         if  get_type == "api_linha":
@@ -698,8 +697,7 @@ def exec_client(cfg_cliente):
                          ws_total = ws_pagina-1
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
+                erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 raise Exception(erros)   
 
 
@@ -752,8 +750,7 @@ def exec_client(cfg_cliente):
                           dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
+                erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 raise Exception(erros)   
 
         if  get_type == "hcm_senior":
@@ -819,8 +816,7 @@ def exec_client(cfg_cliente):
                           dados.to_sql(name=tbl_destino,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
+                erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 raise Exception(erros)   
 
         if  get_type == "api_nexti":
@@ -910,8 +906,7 @@ def exec_client(cfg_cliente):
                      ws_pagina += 1
 
             except Exception as e:
-                exc_tb = sys.exc_info()
-                erros = 'Erro '+ get_type.upper()+ 'linha['+str(exc_tb.tb_lineno)+']: '+str(e)[0:3500]
+                erros = 'Erro '+ get_type.upper()+ ': '+str(e)[0:3500]
                 raise Exception(erros)   
 
         if  get_type == "api_trello":    # sem paginação # parametros 
