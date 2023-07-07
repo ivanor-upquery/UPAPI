@@ -590,8 +590,11 @@ def exec_client(cfg_cliente):
                 comando      = exec_comando.split(',')
                 par_content=json.loads(cnx_content)
                 par_content['params'][1]['valor']=comando[1]
-                if comando[2] is not None and comando[2] != "":
-                    par_content['params'][2]['valor']='{\"'+comando[2]+'\": \"'+comando[3]+'\" }'
+                par_content['params'][2]['valor']='{\"'+comando[2]+'\": \"'+comando[3]+'\" }'
+                # if comando[2] is None or comando[2] == "":
+                #     par_content['params'].pop(2)
+                # else:     
+                #     par_content['params'][2]['valor']='{\"'+comando[2]+'\": \"'+comando[3]+'\" }'
 
                 with engine.connect() as con0:
                      r_del  = con0.execute(exec_clear)
