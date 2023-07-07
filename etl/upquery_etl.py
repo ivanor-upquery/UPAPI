@@ -590,17 +590,22 @@ def exec_client(cfg_cliente):
                 comando      = exec_comando.split(',')
                 par_content=json.loads(cnx_content)
                 par_content['params'][1]['valor']=comando[1]
-                par_content['params'][2]['valor']='{\"'+comando[2]+'\": \"'+comando[3]+'\" }'
+                if comando[2] is not None and comando[2] != "":
+                    par_content['params'][2]['valor']='{\"'+comando[2]+'\": \"'+comando[3]+'\" }'
 
                 with engine.connect() as con0:
                      r_del  = con0.execute(exec_clear)
                      data   = requests.put(url=cnx_url, json=par_content).json()
 
+                     with open("/opt/oracle/upapi/error1.txt", "w") as text_file:
+                          text_file.write(str(data))
+
+                     with open("/opt/oracle/upapi/error2.txt", "w") as text_file:
+                          text_file.write(str(par_content))
+
+
                      chk = datetime.today()
                      h_file = chk.strftime('%d%m%Y%H%M%S')
-
-                     #with open("/opt/oracle/upapi/error.txt", "w") as text_file:
-                     #     text_file.write(str(data))
 
                      if  comando[0] == "full_line":
                          dados = pd.DataFrame(data[comando[4]])
