@@ -91,17 +91,64 @@ def importa_ticket():
         insert_log(h_inicio,'Erro',e,'VM_TICKET')
 
 
-atual = date.today()+timedelta(days=-2)
+def importa_person():
+
+    formato   =['id','businessName','bossName','role']
+    colunas   =['id','businessName','bossName','role']
+    tabela    ='VM_PERSON_API'
+    tabela_tmp='ora$tmp_person'
+    tipo_log  = 'VM_PERSON'
+
+    try:
+
+        url_api = 'https://api.movidesk.com/public/v1/persons?token=be637dc3-62f5-496a-81c4-887dbe3ab291&$select=id,businessName,bossName,role'
+        leitura = urllib.request.urlopen(url_api).read()
+        data = json.loads(leitura)
+        dados = pd.json_normalize(data)
+        dados = pd.DataFrame(dados,columns=formato)
+
+        print(dados.info())
+        print(dados)
+
+        dados.columns = colunas
+        dados.columns = dados.columns.str.strip().str.lower()
+        object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
+        dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
+
+
+        with engine.connect() as con0:
+            if  not con0.dialect.has_table(con0, tabela_tmp):
+                result = con0.execute("create global temporary table "+tabela_tmp+" on commit preserve rows as select * from "+tabela+" where 1=2")
+            
+            result = con0.execute("delete from " + tabela_tmp)
+            dados.to_sql(name=tabela_tmp,con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+            
+            result = con0.execute("delete from " + tabela)
+            del_linhas = result.rowcount
+            result = con0.execute("insert into " + tabela + " select * from " + tabela_tmp)
+            insert_linhas = result.rowcount
+            #result = con0.execute("truncate table ora$tmp_ticket")
+            insert_log(h_inicio,'EXECUTADO OK','Deletadas: '+str(del_linhas)+' Inseridas: '+str(insert_linhas), tipo_log)
+    except Exception as e:
+        insert_log(h_inicio,'Erro',e, tipo_log)
+
+
+
+#---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Bloco Principal
+#---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+atual      = date.today()+timedelta(days=-2)
 referencia = atual.strftime("%Y-%m-%d")+'T00:00:00.00z'
+dsn        = cx_Oracle.makedsn('bmw',port=1521,service_name='dbbi')
+usuario    = 'dwu'
+senha      = 'ITwen2020'
+engine     = create_engine('oracle+cx_oracle://%s:%s@%s' % (usuario, senha, dsn))
+chk        = datetime.today()
+h_inicio   = chk.strftime('%d/%m/%Y %H:%M:%S')
 
-dsn = cx_Oracle.makedsn('bmw',port=1521,service_name='dbbi')
-senha='ITwen2020'
-engine = create_engine('oracle+cx_oracle://%s:%s@%s' % ("dwu", senha, dsn))
+importa_ticket()
+importa_person()
 
-chk = datetime.today()
-h_inicio = chk.strftime('%d/%m/%Y %H:%M:%S')
-
-#referencia='2010-07-30T00:00:00.00z'
-importa_ticket
 
 
