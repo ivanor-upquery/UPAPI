@@ -25,10 +25,10 @@ def insert_log(p_inicio,p_resposta,p_texto, p_tabela):
          execucao = []
          execucao.append(p_inicio)
          execucao.append(h_fim)
+         execucao.append(p_tabela)
          execucao.append(p_resposta)
          execucao.append(p_texto)
-         execucao.append(p_tabela)
-         result = con1.execute("insert into VM_DETALHES_AGENT values (to_date(:1,'dd/mm/yyyy hh24:mi:ss'),to_date(:2,'dd/mm/yyyy hh24:mi:ss'),'00000096',:5,:3,'',:4)",execucao)
+         result = con1.execute("insert into VM_DETALHES_AGENT values (to_date(:1,'dd/mm/yyyy hh24:mi:ss'),to_date(:2,'dd/mm/yyyy hh24:mi:ss'),'00000096',:3,:4,'',:5)",execucao)
 
 def remove_timezone(dt):
     try:
