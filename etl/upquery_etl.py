@@ -1,21 +1,11 @@
-import pyodbc
-import fdb
-import psycopg2
-import redshift_connector
-import pymysql
-import pymssql
 import json
 import requests
 import sys
 import logging
 import pandas as pd
-import sqlalchemy as sa
-import cx_Oracle
 import time
 import base64
 import math
-from sqlalchemy import create_engine
-from sqlalchemy.exc import SQLAlchemyError
 from requests.structures import CaseInsensitiveDict
 import threading
 import datetime
@@ -26,6 +16,18 @@ import configparser as ConfigParser
 import os
 import csv
 import fnmatch
+
+import sqlalchemy as sa
+from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
+import cx_Oracle
+import pyodbc
+import fdb
+import psycopg2
+import redshift_connector
+import pymysql
+import pymssql
+
 import etl_conces   # importa arquivo concessionárias (COPEL, CELESC) 
 
 #with open("/opt/oracle/upapi/error.txt", "w") as text_file:
