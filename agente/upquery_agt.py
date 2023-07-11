@@ -32,11 +32,11 @@ fonte_serv='controle'
 fonte_user='dwu'
 fonte_pass='s82sksw9qskw0'
 
-#fonte_host='localhost'
-#fonte_port=1521
-#fonte_serv='desenv'
-#fonte_user='dwup2'
-#fonte_pass='dwup2'
+##   fonte_host='localhost'
+##   fonte_port=1521
+##   fonte_serv='desenv'
+##   fonte_user='dwup2'
+##   fonte_pass='dwup2'
 
 
 
@@ -95,37 +95,57 @@ def exec_etl(p_cd_cliente):
              error = str(e) 
              logger.error('Conn-'+error)
              break
-
-         connection = engine.raw_connection()
-         cursor = connection.cursor()
-         cursor.callproc("lock_status", [p_cd_cliente,'A'])
-         cursor.close()
-         connection.commit()
-
-         #con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=fonte_serv,encoding="UTF-8")
-         con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
-         cur = con.cursor()
-
-         parbuf = []
-         parbuf.append(p_cd_cliente)
-         cur.execute("select BLOB_CONTENT, ID_CLIENTE, CHECK_ID, ID_ACAO, TABELA_CRITERIO, DB_ORIGEM from VM_SYS_FILA where id_cliente = :1 and rownum=1", parbuf)
-         row = cur.fetchone()
-         blob = row[0].read()
-         blob_content = blob.decode('latin-1')
-         parbuf = []
-         parbuf.append(row[1])
-         parbuf.append(row[2])
-         parbuf.append(row[3])
-         tabela_criterio = row[4]
-         db_origem       = row[5]
-         id_cliente      = row[1]
-         cur.close()
-         con.close()
-
-         with engine.connect() as con0:
-              r_back = con0.execute("update TMP_DOCS SET status = 'RUNNING', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
+         
+         tabela_transp = ""
+         status        = "ERRO"
 
          try:
+
+            try:
+                connection = engine.raw_connection()
+                cursor = connection.cursor()
+                cursor.callproc("lock_status", [p_cd_cliente,'A'])
+                cursor.close()
+                connection.commit()
+            except Exception as e:
+                erros='Erro conectando base: '+str(e)[0:3000]
+                raise Exception(erros)
+
+            try:
+                parbuf = []
+                parbuf.append(p_cd_cliente)
+                con = cx_Oracle.connect(user=fonte_user,password=fonte_pass,dsn=dsn,encoding="UTF-8")
+                cur = con.cursor()
+                cur.execute("select BLOB_CONTENT, ID_CLIENTE, CHECK_ID, ID_ACAO, TABELA_CRITERIO, DB_ORIGEM from VM_SYS_FILA where id_cliente = :1 and rownum=1", parbuf)
+                row = cur.fetchone()
+                parbuf = []
+                parbuf.append(row[1])
+                parbuf.append(row[2])
+                parbuf.append(row[3])
+                tabela_criterio = row[4]
+                db_origem       = row[5]
+                id_cliente      = row[1]
+
+                if row[0] is None:
+                    erros='BLOB_CONTENT da TMP_DOCS esta vazio ou invalido.'
+                    raise Exception(erros)
+                blob = row[0].read()
+                blob_content = blob.decode('latin-1')
+
+                cur.close()
+                con.close()
+            except Exception as e:
+                erros='Erro buscando dados da VM_SYS_FILA: '+str(e)[0:3000]
+                raise Exception(erros)
+
+
+            try:
+                with engine.connect() as con0:
+                    r_back = con0.execute("update TMP_DOCS SET status = 'RUNNING', last_updated = sysdate where TMP_DOCS.id_cliente = :1 and TMP_DOCS.check_id = :2 and TMP_DOCS.id_acao = :3",parbuf)
+            except Exception as e:
+                erros='Erro atualizando TMP_DOCS para RUNNING: '+str(e)[0:3000]
+                raise Exception(erros)     
+
 
             with engine.connect() as con0:
                   data_con = pd.read_sql_query('select TABELA_TRANSP , ANO_AGENDAMENTO , MES_AGENDAMENTO, ID_CONEXAO from CTB_ACOES_EXEC EXEC where EXEC.id_cliente = :1 and EXEC.check_id = :2 and EXEC.id_acao = :3',con=con0,params=parbuf)
@@ -263,8 +283,9 @@ def exec_etl(p_cd_cliente):
             try:
                 with engine.connect() as con0:
                     r_back = con0.execute("update TMP_DOCS SET status = 'ERRO', last_updated = sysdate, erro = :p0 where id_cliente = :p1 and check_id = :p2 and id_acao = :p3", p0=erros,p1=parbuf[0],p2=parbuf[1],p3=parbuf[2] )
+                    r_back = con0.execute("insert into CTB_ERROS (p_id_cliente, p_check_id, p_id_acao, p_erro_txt, dt_registro) values (:p1, :p2, :p3, :p4, sysdate)", p1=parbuf[0],p2=parbuf[1],p3=parbuf[2],p4=erros)
             except Exception as e:
-                logger.error('Erro atualizado TMP_DOCS para ERRO: '+str(e)[0:3000])
+                logger.error('Erro atualizado TMP_DOCS/CTB_ERROS para ERRO: '+str(e)[0:3000])
 
          connection = engine.raw_connection()
          cursor = connection.cursor()
