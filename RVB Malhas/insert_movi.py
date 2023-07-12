@@ -40,27 +40,35 @@ def remove_timezone(dt):
 
 def strurl_ticket(pular,data):
     # url_flex = 'https://api.movidesk.com/public/v1/tickets?token=be637dc3-62f5-496a-81c4-887dbe3ab291&$select=id,type,subject,category,urgency,status,origin,createddate,lifetimeWorkingTime,resolvedIn,lastActionDate,slaSolutionDate,slaResponseDate,slaRealResponseDate,serviceFirstLevel,serviceFirstLevelId,&$expand=owner($select=businessName,email,id)&$filter=lastUpdate%20gt%20'+data+'%20or%20createdDate%20gt%20'+data+'&$orderby=createdDate&$top=1000&$skip='+str(pular)
-    url_flex = 'https://api.movidesk.com/public/v1/tickets?token=be637dc3-62f5-496a-81c4-887dbe3ab291&$select=id,type,subject,category,urgency,status,origin,createddate,lifetimeWorkingTime,resolvedIn,lastActionDate,slaSolutionDate,slaResponseDate,slaRealResponseDate,serviceFirstLevel,serviceFirstLevelId,&$expand=owner($select=businessName,email,id),&$expand=clients($select=id,businessName,email)&$filter=lastUpdate%20gt%20'+data+'%20or%20createdDate%20gt%20'+data+'&$orderby=createdDate&$top=1000&$skip='+str(pular)
+    url_flex = 'https://api.movidesk.com/public/v1/tickets?token=be637dc3-62f5-496a-81c4-887dbe3ab291&$select=id,type,subject,category,urgency,status,origin,createddate,lifetimeWorkingTime,resolvedIn,lastActionDate,slaSolutionDate,slaResponseDate,slaRealResponseDate,serviceFirstLevel,serviceFirstLevelId,&$expand=owner($select=businessName,email,id),clients($select=id,businessName,email)&$filter=lastUpdate%20gt%20'+data+'%20or%20createdDate%20gt%20'+data+'&$orderby=createdDate&$top=1000&$skip='+str(pular)
     print(url_flex)
     return url_flex
 
 def importa_ticket():
 
     formato=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','owner.email','owner.businessName','owner.id','clients.id','clients.email','clients.businessName',]
-    colunas=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','email','businessName','ownerid','clientsid','clientsemail','clientsbusinessName']
+    colunas=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','email','businessName','ownerid','clients_id','clients_email','clients_businessName']
 
     pular = 1
 
+    print('a1')
     try:
         with engine.connect() as con0:
+            print('a2')
             if  not con0.dialect.has_table(con0, 'ora$tmp_ticket'):
                 result = con0.execute("create global temporary table ora$tmp_ticket on commit preserve rows as select * from VM_TICKET_API where 1=2")
+            if  not con0.dialect.has_table(con0, 'ora$tmp_clients'):
+                result = con0.execute("create global temporary table ora$tmp_clients on commit preserve rows as select * from VM_TICKET_CLIENTS_API where 1=2")
+
             while (pular != 0):
                 if  pular == 1:
                     pular = 0
                 url_api = strurl_ticket(pular, referencia)
                 leitura = urllib.request.urlopen(url_api).read()
                 data = json.loads(leitura)
+                
+                with open("/opt/oracle/upapi/error1.txt", "w") as text_file:
+                    text_file.write(str(data))
 
                 pular = pular + 1000
                 if  data != []:
@@ -79,6 +87,14 @@ def importa_ticket():
                     object_columns = [c for c in dados.columns[dados.dtypes == 'object'].tolist()]
                     dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
                     dados.to_sql(name='ora$tmp_ticket',con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                    
+                    # Clientes dos tickets
+                    dados_cli = pd.json_normalize(data, "clients", ["id"], record_prefix="clients_")
+                    dados_cli = pd.DataFrame(dados_cli,columns=['clients_id','clients_email','clients_businessName','ticked_id'])
+                    dados_cli.columns = dados_cli.columns.str.strip().str.lower()
+                    object_columns = [c for c in dados_cli.columns[dados_cli.dtypes == 'object'].tolist()]
+                    dtyp = {c:sa.types.VARCHAR(dados_cli[c].str.len().max()) for c in object_columns}
+                    dados_cli.to_sql(name='ora$tmp_clients',con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                 else:
                     pular = 0
 
@@ -139,14 +155,14 @@ def importa_person():
 # Bloco Principal
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-host        = 'bmw'
-servicename = 'dbbi'
-usuario     = 'dwu'
-senha       = 'ITwen2020'
-## host        = '172.1.1.230'
-## servicename = 'DESENV'
-## usuario     = 'dwup2'
-## senha       = 'dwup2'
+# host        = 'bmw'
+# servicename = 'dbbi'
+# usuario     = 'dwu'
+# senha       = 'ITwen2020'
+host        = '172.1.1.230'
+servicename = 'desenv'
+usuario     = 'dwup2'
+senha       = 'dwup2'
 
 atual      = date.today()+timedelta(days=-2)
 referencia = atual.strftime("%Y-%m-%d")+'T00:00:00.00z'
@@ -156,7 +172,7 @@ chk        = datetime.today()
 h_inicio   = chk.strftime('%d/%m/%Y %H:%M:%S')
 
 importa_ticket()
-importa_person()
+# importa_person()
 
 
 
