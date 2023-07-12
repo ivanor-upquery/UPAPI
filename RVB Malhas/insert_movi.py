@@ -39,14 +39,15 @@ def remove_timezone(dt):
         return dt
 
 def strurl_ticket(pular,data):
-    url_flex = 'https://api.movidesk.com/public/v1/tickets?token=be637dc3-62f5-496a-81c4-887dbe3ab291&$select=id,type,subject,category,urgency,status,origin,createddate,lifetimeWorkingTime,resolvedIn,lastActionDate,slaSolutionDate,slaResponseDate,slaRealResponseDate,serviceFirstLevel,serviceFirstLevelId,&$expand=owner($select=businessName,email,id)&$filter=lastUpdate%20gt%20'+data+'%20or%20createdDate%20gt%20'+data+'&$orderby=createdDate&$top=1000&$skip='+str(pular)
+    # url_flex = 'https://api.movidesk.com/public/v1/tickets?token=be637dc3-62f5-496a-81c4-887dbe3ab291&$select=id,type,subject,category,urgency,status,origin,createddate,lifetimeWorkingTime,resolvedIn,lastActionDate,slaSolutionDate,slaResponseDate,slaRealResponseDate,serviceFirstLevel,serviceFirstLevelId,&$expand=owner($select=businessName,email,id)&$filter=lastUpdate%20gt%20'+data+'%20or%20createdDate%20gt%20'+data+'&$orderby=createdDate&$top=1000&$skip='+str(pular)
+    url_flex = 'https://api.movidesk.com/public/v1/tickets?token=be637dc3-62f5-496a-81c4-887dbe3ab291&$select=id,type,subject,category,urgency,status,origin,createddate,lifetimeWorkingTime,resolvedIn,lastActionDate,slaSolutionDate,slaResponseDate,slaRealResponseDate,serviceFirstLevel,serviceFirstLevelId,&$expand=owner($select=businessName,email,id),&$expand=clients($select=id,businessName,email)&$filter=lastUpdate%20gt%20'+data+'%20or%20createdDate%20gt%20'+data+'&$orderby=createdDate&$top=1000&$skip='+str(pular)
     print(url_flex)
     return url_flex
 
 def importa_ticket():
 
-    formato=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','owner.email','owner.businessName','owner.id']
-    colunas=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','email','businessName','ownerid']
+    formato=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','owner.email','owner.businessName','owner.id','clients.id','clients.email','clients.businessName',]
+    colunas=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','email','businessName','ownerid','clientsid','clientsemail','clientsbusinessName']
 
     pular = 1
 
