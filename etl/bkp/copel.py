@@ -133,7 +133,6 @@ try:
     driver.execute_script("arguments[0].click();", pressione)
 
     time.sleep(5)
-    #pressione = driver.find_element(By.XPATH,'//*[@id="Table_01"]/tbody/tr[2]/td/table/tbody/tr/td[1]/table/tbody/tr[12]/td/table/tbody/tr[4]/td/a')
     pressione = driver.find_element(By.XPATH,'//*[@id="Table_01"]/tbody/tr[2]/td/table/tbody/tr/td[1]/table/tbody/tr[11]/td/table/tbody/tr[4]/td/a')
     driver.execute_script("arguments[0].click();", pressione)
 
