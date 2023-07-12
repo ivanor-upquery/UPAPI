@@ -526,15 +526,11 @@ def relatorio_455_result(vDtInicio, vDtFinal, vInfComp):
     driver.find_element_by_id("13").clear()
     driver.find_element_by_id("14").clear()
     driver.find_element_by_id("15").clear()
-
     driver.find_element_by_id("18").send_keys("T")
     driver.find_element_by_id("19").send_keys("T")
     driver.find_element_by_id("20").send_keys("S")
     driver.find_element_by_id("21").clear()
     driver.find_element_by_id("21").send_keys("T")
-
-
-
     driver.find_element_by_id("22").send_keys("T")
     driver.find_element_by_id("23").send_keys("A")
     driver.find_element_by_id("25").send_keys("T")
@@ -543,22 +539,137 @@ def relatorio_455_result(vDtInicio, vDtFinal, vInfComp):
     driver.find_element_by_id("28").send_keys("T")
     driver.find_element_by_id("29").send_keys("A")
     driver.find_element_by_id("30").send_keys("A")
-
     driver.find_element_by_id("32").clear()
     driver.find_element_by_id("34").clear()
     driver.find_element_by_id("35").clear()
     driver.find_element_by_id("35").send_keys("E")
+
     driver.find_element_by_id("37").send_keys("G")
     driver.find_element_by_id("40").click()
+
+def relatorio_455_bdk(vDtInicio, vDtFinal, vInfComp):
+    driver.get("https://sistema.ssw.inf.br/bin/ssw0230")
+    time.sleep(2)
+
+    driver.find_element_by_id("2").clear()
+    driver.find_element_by_id("3").clear()
+    driver.find_element_by_id("4").clear()
+    driver.find_element_by_id("5").clear()
+    driver.find_element_by_id("7").clear()
+    driver.find_element_by_id("8").clear()
+    driver.find_element_by_id("9").clear()
+    driver.find_element_by_id("10").clear()
+    driver.find_element_by_id("11").clear()
+    driver.find_element_by_id("12").clear()
+    driver.find_element_by_id("11").send_keys(vDtInicio)
+    driver.find_element_by_id("12").send_keys(vDtFinal)
+    driver.find_element_by_id("13").clear()
+    driver.find_element_by_id("14").clear()
+    driver.find_element_by_id("15").clear()
+    driver.find_element_by_id("18").send_keys("T")
+    driver.find_element_by_id("19").send_keys("T")
+    driver.find_element_by_id("20").send_keys("S")
+    driver.find_element_by_id("21").clear()
+    driver.find_element_by_id("21").send_keys("T")
+    driver.find_element_by_id("22").send_keys("T")
+    driver.find_element_by_id("23").send_keys("A")
+    driver.find_element_by_id("25").send_keys("T")
+    driver.find_element_by_id("26").send_keys("A")
+    driver.find_element_by_id("27").send_keys("A")
+    driver.find_element_by_id("28").send_keys("T")
+    driver.find_element_by_id("29").send_keys("A")
+    driver.find_element_by_id("30").send_keys("A")
+    driver.find_element_by_id("32").clear()
+    driver.find_element_by_id("34").clear()
+    driver.find_element_by_id("35").clear()
+    driver.find_element_by_id("35").send_keys("E")
+
+    driver.find_element_by_id("37").send_keys("B")
+    driver.find_element_by_id("38").send_keys("D")
+    driver.find_element_by_id("39").send_keys("K")
+    driver.find_element_by_id("40").click()
+
+def relatorio_455_c(vDtInicio, vDtFinal, vInfComp):
+    driver.get("https://sistema.ssw.inf.br/bin/ssw0230")
+    time.sleep(2)
+
+    driver.find_element_by_id("2").clear()
+    driver.find_element_by_id("3").clear()
+    driver.find_element_by_id("4").clear()
+    driver.find_element_by_id("5").clear()
+    driver.find_element_by_id("7").clear()
+    driver.find_element_by_id("8").clear()
+    driver.find_element_by_id("9").clear()
+    driver.find_element_by_id("10").clear()
+    driver.find_element_by_id("11").clear()
+    driver.find_element_by_id("12").clear()
+    driver.find_element_by_id("11").send_keys(vDtInicio)
+    driver.find_element_by_id("12").send_keys(vDtFinal)
+    driver.find_element_by_id("13").clear()
+    driver.find_element_by_id("14").clear()
+    driver.find_element_by_id("15").clear()
+    driver.find_element_by_id("18").send_keys("T")
+    driver.find_element_by_id("19").send_keys("T")
+    driver.find_element_by_id("20").send_keys("S")
+    driver.find_element_by_id("21").clear()
+    driver.find_element_by_id("21").send_keys("T")
+    driver.find_element_by_id("22").send_keys("T")
+    driver.find_element_by_id("23").send_keys("A")
+    driver.find_element_by_id("25").send_keys("T")
+    driver.find_element_by_id("26").send_keys("A")
+    driver.find_element_by_id("27").send_keys("A")
+    driver.find_element_by_id("28").send_keys("T")
+    driver.find_element_by_id("29").send_keys("A")
+    driver.find_element_by_id("30").send_keys("A")
+    driver.find_element_by_id("32").clear()
+    driver.find_element_by_id("34").clear()
+    driver.find_element_by_id("35").clear()
+    driver.find_element_by_id("35").send_keys("E")
+
+    driver.find_element_by_id("37").send_keys("C")
+    driver.find_element_by_id("40").click()
+
 
 def relatorio_056(vCompetencia, vDominio, vCliente):
     driver.get("https://sistema.ssw.inf.br/bin/ssw0082")
     time.sleep(2)
-
     driver.find_element_by_id("11").click()
-
     time.sleep(10)
     renomear_arquivo("056",vCompetencia,vDominio, vCliente,'')
+
+def relatorio_583(vCompetencia, vDominio, vCliente):
+    driver.get("https://sistema.ssw.inf.br/bin/ssw0662")
+    time.sleep(2)
+    driver.find_element_by_xpath('//*[@id="frm"]/a[@id="6"]').click()
+    time.sleep(10)
+    renomear_arquivo("583",vCompetencia,vDominio, vCliente,'')
+
+def relatorio_524(vDtInicial, vDtFinal, vInfComp):
+    driver.get("https://sistema.ssw.inf.br/bin/ssw0585")
+    time.sleep(2)
+    driver.find_element_by_id("t_unidade").clear()
+    driver.find_element_by_id("t_tp_uni").send_keys("E")
+    driver.find_element_by_id("t_data_ini").send_keys(vDtInicial)
+    driver.find_element_by_id("t_data_fin").send_keys(vDtFinal)
+    driver.find_element_by_id("t_tp_arquivo").send_keys("N")
+    driver.find_element_by_id("t_excel").send_keys("S")
+    driver.find_element_by_id("2").click()
+
+def relatorio_150(vDtInicial, vDtFinal, vCompetencia, vDominio, vCliente):
+    driver.get("https://sistema.ssw.inf.br/bin/ssw0861")
+    time.sleep(2)
+    driver.find_element_by_id("1").send_keys(vDtInicial)
+    driver.find_element_by_id("2").send_keys(vDtFinal)
+    driver.find_element_by_id("4").clear()
+    driver.find_element_by_id("6").clear()
+    driver.find_element_by_id("7").send_keys("R")
+    driver.find_element_by_id("8").send_keys("S")
+    driver.find_element_by_id("9").send_keys("S")
+    # driver.find_element_by_id("10").click()
+    time.sleep(10)
+    renomear_arquivo("150",vCompetencia,vDominio, vCliente,'')
+
+
 
 def main_function(vDominio, vCpf, vUsuario, vSenha, vUnidade, vCompetencia, vDtInicial, vDtFinal, vDtRel073, vDtRel076, vDtRel916, vDtRel441, vTipo, vCliente, vInfComp):
 
@@ -793,13 +904,59 @@ def main_function(vDominio, vCpf, vUsuario, vSenha, vUnidade, vCompetencia, vDtI
         elif vDominio in ("EMI"):
 
             try:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 Resultados {vCliente}')
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 G-Resultados {vCliente}')
                 relatorio_455_result(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
                 time.sleep(5)
                 baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, 'result')
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 Resultados {vCliente}')
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 G-Resultados {vCliente}')
             except:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 Resultados {vCliente}')
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 G-Resultados {vCliente}')
+
+            try:
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 B+D+K {vCliente}')
+                relatorio_455_bdk(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
+                time.sleep(5)
+                baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, 'bdk')
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 B+D+K {vCliente}')
+            except:
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 B+D+K {vCliente}')
+
+            try:
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 C (Compr.Entrega)  {vCliente}')
+                relatorio_455_c(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
+                time.sleep(5)
+                baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, 'c')
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 C (Compr.Entrega) {vCliente}')
+            except:
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 C (Compr.Entrega) {vCliente}')
+
+            try:
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 200 {vCliente}')
+                relatorio_200(vDtInicial,vDtFinal,vCompetencia, vDominio, vCliente) #precisa acessar a tela 156 para baixar o arquivo
+                time.sleep(5)
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 200 {vCliente}')
+            except:
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 200 {vCliente}')
+
+            try:
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 524 Resultados {vCliente}')
+                relatorio_524(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
+                time.sleep(5)
+                baixar_arquivo("524",vUsuario,vCompetencia,vDominio, vCliente, '')
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 524 Resultados {vCliente}')
+            except Exception as e:
+                print(str(e)[0:3000])
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 524 Resultados {vCliente}')
+
+            try:
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 150 {vCliente}')
+                relatorio_150(vDtInicial,vDtFinal, vCompetencia, vDominio, vCliente) #baixa automaticamente na propria tela
+                time.sleep(5)
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 150 {vCliente}')
+            except Exception as e:
+                print(str(e)[0:3000])
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 150 {vCliente}')
+
 
     if vTipo in ("both","full") :
         
@@ -820,7 +977,7 @@ def main_function(vDominio, vCpf, vUsuario, vSenha, vUnidade, vCompetencia, vDtI
             print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 477 {vCliente}')
         except:
             print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 477 {vCliente}')
-        
+
         try:
             print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 046 {vCliente}')
             relatorio_046(vCompetencia,vDominio, vCliente) #baixa automaticamente na propria tela 046
@@ -828,7 +985,18 @@ def main_function(vDominio, vCpf, vUsuario, vSenha, vUnidade, vCompetencia, vDtI
             print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 046 {vCliente}')
         except:
             print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 046 {vCliente}')
-    
+
+        try:
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 583 {vCliente}')
+            relatorio_583(vCompetencia,vDominio, vCliente) #baixa automaticamente na propria tela 046
+            time.sleep(15)
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 583 {vCliente}')
+        except Exception as e:
+            print(str(e)[0:3000])
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 583 {vCliente}')
+           
+
+
     
 print("....")
 #Preparar as datas iniciais e finais e o parametro competencia (Mes Atual)
