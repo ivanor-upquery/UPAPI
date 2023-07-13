@@ -676,9 +676,18 @@ def relatorio_103(vDtInicial, vDtFinal, vCompetencia, vDominio, vCliente):
     driver.find_element_by_id("15").send_keys(vDtFinal)
     driver.find_element_by_id("16").send_keys("I")
     driver.find_element_by_id("17").send_keys("E")
-    driver.find_element_by_id("20").click()
-    time.sleep(10)
-    renomear_arquivo("103",vCompetencia,vDominio, vCliente,'')
+    time.sleep(2)
+    print('a0')
+    botao = driver.find_element_by_id("20")
+    print(botao)
+    print('a1')
+    
+    time.sleep(1)
+    botao.click()
+    
+    print('a2')
+    time.sleep(20)
+    # renomear_arquivo("103",vCompetencia,vDominio, vCliente,'')
 
 
 
@@ -689,31 +698,31 @@ def main_function(vDominio, vCpf, vUsuario, vSenha, vUnidade, vCompetencia, vDtI
 
     if vTipo in ("both","scheduler") :
 
-        try:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 {vCliente}')
-            relatorio_455(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
-            time.sleep(5)
-            baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, '')
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 {vCliente}')
-        except:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 {vCliente}')
-
-        try:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 411 {vCliente}')
-            relatorio_411(vDtInicial,vDtRel073,vCompetencia,vDominio, vCliente) #não precisa acessar a tela 156 para baixar o arquivo
-            time.sleep(5)
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 411 {vCliente}')
-        except:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 411 {vCliente}')
-
-
-        try:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 073 {vCliente}')
-            relatorio_073(vDtInicial,vDtRel073,vCompetencia,vDominio, vCliente) #baixa automaticamente na propria tela 073
-            time.sleep(5)
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 073 {vCliente}')
-        except:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 073 {vCliente}')
+#        try:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 {vCliente}')
+#            relatorio_455(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
+#            time.sleep(5)
+#            baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, '')
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 {vCliente}')
+#        except:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 {vCliente}')
+#
+#        try:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 411 {vCliente}')
+#            relatorio_411(vDtInicial,vDtRel073,vCompetencia,vDominio, vCliente) #não precisa acessar a tela 156 para baixar o arquivo
+#            time.sleep(5)
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 411 {vCliente}')
+#        except:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 411 {vCliente}')
+#
+#
+#        try:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 073 {vCliente}')
+#            relatorio_073(vDtInicial,vDtRel073,vCompetencia,vDominio, vCliente) #baixa automaticamente na propria tela 073
+#            time.sleep(5)
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 073 {vCliente}')
+#        except:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 073 {vCliente}')
 
         if vDominio in ("EFX") :
             
@@ -914,59 +923,59 @@ def main_function(vDominio, vCpf, vUsuario, vSenha, vUnidade, vCompetencia, vDtI
 
         elif vDominio in ("EMI"):
 
-            try:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 G-Resultados {vCliente}')
-                relatorio_455_result(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
-                time.sleep(5)
-                baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, 'result')
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 G-Resultados {vCliente}')
-            except:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 G-Resultados {vCliente}')
+#            try:
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 G-Resultados {vCliente}')
+#                relatorio_455_result(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
+#                time.sleep(5)
+#                baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, 'result')
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 G-Resultados {vCliente}')
+#            except:
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 G-Resultados {vCliente}')
+#
+#            try:
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 B+D+K {vCliente}')
+#                relatorio_455_bdk(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
+#                time.sleep(5)
+#                baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, 'bdk')
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 B+D+K {vCliente}')
+#            except:
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 B+D+K {vCliente}')
+#
+#            try:
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 C (Compr.Entrega)  {vCliente}')
+#                relatorio_455_c(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
+#                time.sleep(5)
+#                baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, 'c')
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 C (Compr.Entrega) {vCliente}')
+#            except:
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 C (Compr.Entrega) {vCliente}')
+#
+#            try:
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 200 {vCliente}')
+#                relatorio_200(vDtInicial,vDtFinal,vCompetencia, vDominio, vCliente) #precisa acessar a tela 156 para baixar o arquivo
+#                time.sleep(5)
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 200 {vCliente}')
+#            except:
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 200 {vCliente}')
+#
+#            try:
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 524 Resultados {vCliente}')
+#                relatorio_524(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
+#                time.sleep(5)
+#                baixar_arquivo("524",vUsuario,vCompetencia,vDominio, vCliente, '')
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 524 Resultados {vCliente}')
+#            except Exception as e:
+#                print(str(e)[0:3000])
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 524 Resultados {vCliente}')
 
-            try:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 B+D+K {vCliente}')
-                relatorio_455_bdk(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
-                time.sleep(5)
-                baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, 'bdk')
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 B+D+K {vCliente}')
-            except:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 B+D+K {vCliente}')
-
-            try:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 455 C (Compr.Entrega)  {vCliente}')
-                relatorio_455_c(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
-                time.sleep(5)
-                baixar_arquivo("455",vUsuario,vCompetencia,vDominio, vCliente, 'c')
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 455 C (Compr.Entrega) {vCliente}')
-            except:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 455 C (Compr.Entrega) {vCliente}')
-
-            try:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 200 {vCliente}')
-                relatorio_200(vDtInicial,vDtFinal,vCompetencia, vDominio, vCliente) #precisa acessar a tela 156 para baixar o arquivo
-                time.sleep(5)
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 200 {vCliente}')
-            except:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 200 {vCliente}')
-
-            try:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 524 Resultados {vCliente}')
-                relatorio_524(vDtInicial,vDtFinal, vInfComp) #precisa acessar a tela 156 para baixar o arquivo
-                time.sleep(5)
-                baixar_arquivo("524",vUsuario,vCompetencia,vDominio, vCliente, '')
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 524 Resultados {vCliente}')
-            except Exception as e:
-                print(str(e)[0:3000])
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 524 Resultados {vCliente}')
-
-            try:
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 150 {vCliente}')
-                relatorio_150(vDtInicial,vDtFinal, vCompetencia, vDominio, vCliente) #baixa automaticamente na propria tela
-                time.sleep(5)
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 150 {vCliente}')
-            except Exception as e:
-                print(str(e)[0:3000])
-                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 150 {vCliente}')
+#            try:
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 150 {vCliente}')
+#                relatorio_150(vDtInicial,vDtFinal, vCompetencia, vDominio, vCliente) #baixa automaticamente na propria tela
+#                time.sleep(5)
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 150 {vCliente}')
+#            except Exception as e:
+#                print(str(e)[0:3000])
+#                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 150 {vCliente}')
 
             try:
                 print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 103 {vCliente}')
@@ -979,41 +988,42 @@ def main_function(vDominio, vCpf, vUsuario, vSenha, vUnidade, vCompetencia, vDtI
 
 
     if vTipo in ("both","full") :
-        
-        try:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 441 {vCliente}')
-            relatorio_441(vDtRel441,vDtFinal,vCompetencia) #baixa automaticamente na propria tela 441
-            time.sleep(15)
-            baixar_arquivo("441",vUsuario,vCompetencia,vDominio, vCliente,'')
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 441 {vCliente}')
-        except:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 441 {vCliente}')
 
-        try:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 477 {vCliente}')
-            relatorio_477("010121",vDtFinal) #precisa acessar a tela 156 para baixar o arquivo
-            time.sleep(15)
-            baixar_arquivo("477",vUsuario,vCompetencia,vDominio, vCliente,'')
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 477 {vCliente}')
-        except:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 477 {vCliente}')
-
-        try:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 046 {vCliente}')
-            relatorio_046(vCompetencia,vDominio, vCliente) #baixa automaticamente na propria tela 046
-            time.sleep(15)
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 046 {vCliente}')
-        except:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 046 {vCliente}')
-
-        try:
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 583 {vCliente}')
-            relatorio_583(vCompetencia,vDominio, vCliente) #baixa automaticamente na propria tela 046
-            time.sleep(15)
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 583 {vCliente}')
-        except Exception as e:
-            print(str(e)[0:3000])
-            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 583 {vCliente}')
+        aa=1       
+#        try:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 441 {vCliente}')
+#            relatorio_441(vDtRel441,vDtFinal,vCompetencia) #baixa automaticamente na propria tela 441
+#            time.sleep(15)
+#            baixar_arquivo("441",vUsuario,vCompetencia,vDominio, vCliente,'')
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 441 {vCliente}')
+#        except:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 441 {vCliente}')
+#
+#        try:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 477 {vCliente}')
+#            relatorio_477("010121",vDtFinal) #precisa acessar a tela 156 para baixar o arquivo
+#            time.sleep(15)
+#            baixar_arquivo("477",vUsuario,vCompetencia,vDominio, vCliente,'')
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 477 {vCliente}')
+#        except:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 477 {vCliente}')
+#
+#        try:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 046 {vCliente}')
+#            relatorio_046(vCompetencia,vDominio, vCliente) #baixa automaticamente na propria tela 046
+#            time.sleep(15)
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 046 {vCliente}')
+#        except:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 046 {vCliente}')
+#
+#        try:
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 583 {vCliente}')
+#            relatorio_583(vCompetencia,vDominio, vCliente) #baixa automaticamente na propria tela 046
+#            time.sleep(15)
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 583 {vCliente}')
+#        except Exception as e:
+#            print(str(e)[0:3000])
+#            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 583 {vCliente}')
            
 
 

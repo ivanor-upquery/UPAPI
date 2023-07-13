@@ -107,7 +107,10 @@ def importa_ticket():
             del_linhas = result.rowcount
             result = con0.execute("insert into VM_TICKET_CLIENTS_API select * from ora$tmp_ticket_clients")
             insert_linhas = result.rowcount
+            result = con0.execute("delete ora$tmp_ticket_clients")
             insert_log(h_inicio,'EXECUTADO OK','Deletadas: '+str(del_linhas)+' Inseridas: '+str(insert_linhas), 'VM_TICKET_CLIENTS')
+            con0.close()
+           
 
     except Exception as e:
         print(str(e)[0:3500])
@@ -171,6 +174,7 @@ senha       = 'ITwen2020'
 ##   senha       = 'dwup2'
 
 atual      = date.today()+timedelta(days=-2)
+# atual      = date.today()+timedelta(days=-2500)
 referencia = atual.strftime("%Y-%m-%d")+'T00:00:00.00z'
 dsn        = cx_Oracle.makedsn(host,port=1521,service_name=servicename)
 engine     = create_engine('oracle+cx_oracle://%s:%s@%s' % (usuario, senha, dsn))
