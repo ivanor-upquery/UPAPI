@@ -51,10 +51,8 @@ def importa_ticket():
 
     pular = 1
 
-    print('a1')
     try:
         with engine.connect() as con0:
-            print('a2')
             if  not con0.dialect.has_table(con0, 'ora$tmp_ticket'):
                 result = con0.execute("create global temporary table ora$tmp_ticket on commit preserve rows as select * from VM_TICKET_API where 1=2")
             if  not con0.dialect.has_table(con0, 'ora$tmp_ticket_clients'):
