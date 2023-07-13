@@ -669,6 +669,17 @@ def relatorio_150(vDtInicial, vDtFinal, vCompetencia, vDominio, vCliente):
     time.sleep(10)
     renomear_arquivo("150",vCompetencia,vDominio, vCliente,'')
 
+def relatorio_103(vDtInicial, vDtFinal, vCompetencia, vDominio, vCliente):
+    driver.get("https://sistema.ssw.inf.br/bin/ssw0166")
+    time.sleep(2)
+    driver.find_element_by_id("14").send_keys(vDtInicial)
+    driver.find_element_by_id("15").send_keys(vDtFinal)
+    driver.find_element_by_id("16").send_keys("I")
+    driver.find_element_by_id("17").send_keys("E")
+    driver.find_element_by_id("20").click()
+    time.sleep(10)
+    renomear_arquivo("103",vCompetencia,vDominio, vCliente,'')
+
 
 
 def main_function(vDominio, vCpf, vUsuario, vSenha, vUnidade, vCompetencia, vDtInicial, vDtFinal, vDtRel073, vDtRel076, vDtRel916, vDtRel441, vTipo, vCliente, vInfComp):
@@ -956,6 +967,15 @@ def main_function(vDominio, vCpf, vUsuario, vSenha, vUnidade, vCompetencia, vDtI
             except Exception as e:
                 print(str(e)[0:3000])
                 print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 150 {vCliente}')
+
+            try:
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Inicio Rel 103 {vCliente}')
+                relatorio_103(vDtInicial,vDtFinal, vCompetencia, vDominio, vCliente) #baixa automaticamente na propria tela
+                time.sleep(5)
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Fim Rel 103 {vCliente}')
+            except Exception as e:
+                print(str(e)[0:3000])
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), f'Erro Rel 103 {vCliente}')
 
 
     if vTipo in ("both","full") :
