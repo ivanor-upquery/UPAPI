@@ -46,8 +46,8 @@ def strurl_ticket(pular,data):
 
 def importa_ticket():
 
-    formato=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','owner.email','owner.businessName','owner.id','clients.id','clients.email','clients.businessName',]
-    colunas=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','email','businessName','ownerid','clients_id','clients_email','clients_businessName']
+    formato=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','owner.email','owner.businessName','owner.id']
+    colunas=['serviceFirstLevelId','serviceFirstLevel','slaRealResponseDate','slaResponseDate','slaSolutionDate','lastActionDate','resolvedIn','lifeTimeWorkingTime','createdDate','origin','status','urgency','category','subject','type','id','email','businessName','ownerid']
 
     pular = 1
 
@@ -57,8 +57,8 @@ def importa_ticket():
             print('a2')
             if  not con0.dialect.has_table(con0, 'ora$tmp_ticket'):
                 result = con0.execute("create global temporary table ora$tmp_ticket on commit preserve rows as select * from VM_TICKET_API where 1=2")
-            if  not con0.dialect.has_table(con0, 'ora$tmp_clients'):
-                result = con0.execute("create global temporary table ora$tmp_clients on commit preserve rows as select * from VM_TICKET_CLIENTS_API where 1=2")
+            if  not con0.dialect.has_table(con0, 'ora$tmp_ticket_clients'):
+                result = con0.execute("create global temporary table ora$tmp_ticket_clients on commit preserve rows as select * from VM_TICKET_CLIENTS_API where 1=2")
 
             while (pular != 0):
                 if  pular == 1:
@@ -88,13 +88,13 @@ def importa_ticket():
                     dtyp = {c:sa.types.VARCHAR(dados[c].str.len().max()) for c in object_columns}
                     dados.to_sql(name='ora$tmp_ticket',con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                     
-                    # Clientes dos tickets
+                    #-- Clientes dos tickets
                     dados_cli = pd.json_normalize(data, "clients", ["id"], record_prefix="clients_")
-                    dados_cli = pd.DataFrame(dados_cli,columns=['clients_id','clients_email','clients_businessName','ticked_id'])
+                    dados_cli.columns = ['clients_id','clients_email','clients_businessName','ticket_id']
                     dados_cli.columns = dados_cli.columns.str.strip().str.lower()
                     object_columns = [c for c in dados_cli.columns[dados_cli.dtypes == 'object'].tolist()]
-                    dtyp = {c:sa.types.VARCHAR(dados_cli[c].str.len().max()) for c in object_columns}
-                    dados_cli.to_sql(name='ora$tmp_clients',con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
+                    dtyp = {c:sa.types.VARCHAR(300) for c in object_columns}
+                    dados_cli.to_sql(name='ora$tmp_ticket_clients',con=con0, if_exists='append', index=False, chunksize=50000,  dtype=dtyp)
                 else:
                     pular = 0
 
@@ -102,10 +102,18 @@ def importa_ticket():
             del_linhas = result.rowcount
             result = con0.execute("insert into VM_TICKET_API select * from ora$tmp_ticket")
             insert_linhas = result.rowcount
-            #result = con0.execute("truncate table ora$tmp_ticket")
             insert_log(h_inicio,'EXECUTADO OK','Deletadas: '+str(del_linhas)+' Inseridas: '+str(insert_linhas), 'VM_TICKET')
+
+            #-- Clientes dos tickets
+            result = con0.execute("delete from VM_TICKET_CLIENTS_API where ticket_id in (select ticket_id from ora$tmp_ticket_clients)")
+            del_linhas = result.rowcount
+            result = con0.execute("insert into VM_TICKET_CLIENTS_API select * from ora$tmp_ticket_clients")
+            insert_linhas = result.rowcount
+            insert_log(h_inicio,'EXECUTADO OK','Deletadas: '+str(del_linhas)+' Inseridas: '+str(insert_linhas), 'VM_TICKET_CLIENTS')
+
     except Exception as e:
-        insert_log(h_inicio,'Erro',e,'VM_TICKET')
+        print(str(e)[0:3500])
+        insert_log(h_inicio,'Erro',str(e)[0:3500],'VM_TICKET')
 
 
 def importa_person():
@@ -155,14 +163,14 @@ def importa_person():
 # Bloco Principal
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# host        = 'bmw'
-# servicename = 'dbbi'
-# usuario     = 'dwu'
-# senha       = 'ITwen2020'
-host        = '172.1.1.230'
-servicename = 'desenv'
-usuario     = 'dwup2'
-senha       = 'dwup2'
+host        = 'bmw'
+servicename = 'dbbi'
+usuario     = 'dwu'
+senha       = 'ITwen2020'
+##   host        = '172.1.1.230'
+##   servicename = 'desenv'
+##   usuario     = 'dwup2'
+##   senha       = 'dwup2'
 
 atual      = date.today()+timedelta(days=-2)
 referencia = atual.strftime("%Y-%m-%d")+'T00:00:00.00z'
@@ -172,7 +180,7 @@ chk        = datetime.today()
 h_inicio   = chk.strftime('%d/%m/%Y %H:%M:%S')
 
 importa_ticket()
-# importa_person()
+importa_person()
 
 
 
