@@ -65,8 +65,8 @@ def importa_ticket():
                 leitura = urllib.request.urlopen(url_api).read()
                 data = json.loads(leitura)
                 
-                with open("/opt/oracle/upapi/error1.txt", "w") as text_file:
-                    text_file.write(str(data))
+                #with open("/opt/oracle/upapi/error1.txt", "w") as text_file:
+                #    text_file.write(str(data))
 
                 pular = pular + 1000
                 if  data != []:
